@@ -47,12 +47,12 @@ dd {
 }
 
 a { text-decoration: none; }
-a[href]:link { color: #9E358F; }
-a[href]:visited {color: #6F5F9C; }
+a[href]:link { color: #737777; }
+a[href]:visited {color: #1e2022; }
 a[href]:hover { text-decoration:underline; }
 
-a[href].def:link, a[href].def:visited { color: rgba(69, 59, 97, 0.8); }
-a[href].def:hover { color: rgb(78, 98, 114); }
+a[href].def:link, a[href].def:visited { color: rgba(10, 10, 10, 0.8); }
+a[href].def:hover { color: rgb(116, 116, 116); }
 
 /* @end */
 
@@ -410,7 +410,7 @@ blockquote {
 }
 
 .src {
-  background: #f2f2f2;
+  background: #a9d1b5;
   padding: 0.2em 0.5em;
 }
 
