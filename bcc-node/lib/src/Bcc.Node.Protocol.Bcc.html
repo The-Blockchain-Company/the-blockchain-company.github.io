@@ -1,0 +1,746 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE FlexibleContexts #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE NamedFieldPuns #-}</span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-pragma">{-# OPTIONS_GHC -Wno-orphans  #-}</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Bcc.Node.Protocol.Bcc</span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#mkSomeConsensusProtocolBcc"><span class="hs-identifier">mkSomeConsensusProtocolBcc</span></a></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Errors</span></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationError"><span class="hs-identifier">BccProtocolInstantiationError</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier">Prelude</span></a></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier">Control.Monad.Trans.Except</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier">ExceptT</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except.Extra</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">firstExceptT</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Bcc.Chain.Update</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Cole</span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Bcc</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Bcc</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Consensus</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Bcc.CanHardFork</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Consensus</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.HardFork.Combinator.Condense</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Bcc.Condense</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Mempool.TxLimits</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TxLimits</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">Bcc.Api</span></a></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">Bcc.Api.Orphans</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">Bcc.Api.Protocol.Types</span></a></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.Node.Types.html"><span class="hs-identifier">Bcc.Node.Types</span></a></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.Tracing.OrphanInstances.Cole.html"><span class="hs-identifier">Bcc.Tracing.OrphanInstances.Cole</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.Tracing.OrphanInstances.Sophie.html"><span class="hs-identifier">Bcc.Tracing.OrphanInstances.Sophie</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Aurum.html"><span class="hs-identifier">Bcc.Node.Protocol.Aurum</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Aurum</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Cole.html"><span class="hs-identifier">Bcc.Node.Protocol.Cole</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Cole</span></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Sophie.html"><span class="hs-identifier">Bcc.Node.Protocol.Sophie</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Sophie</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.Node.Protocol.Types.html"><span class="hs-identifier">Bcc.Node.Protocol.Types</span></a></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">------------------------------------------------------------------------------</span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- Real Bcc protocol</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | Make 'SomeConsensusProtocol' using the Bcc instance.</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--</span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- The Bcc protocol instance is currently the sequential composition of</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- the Cole and Sophie protocols, and will likely be extended in future</span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- with further sequentially composed protocol revisions.</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- The use of 'SomeConsensusProtocol' lets us handle multiple protocols in a</span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- generic way.</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--</span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- This also serves a purpose as a sanity check that we have all the necessary</span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- type class instances available.</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--</span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#mkSomeConsensusProtocolBcc"><span class="hs-identifier hs-type">mkSomeConsensusProtocolBcc</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Bcc.Node.Types.html#NodeColeProtocolConfiguration"><span class="hs-identifier hs-type">NodeColeProtocolConfiguration</span></a></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Bcc.Node.Types.html#NodeSophieProtocolConfiguration"><span class="hs-identifier hs-type">NodeSophieProtocolConfiguration</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Bcc.Node.Types.html#NodeAurumProtocolConfiguration"><span class="hs-identifier hs-type">NodeAurumProtocolConfiguration</span></a></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Bcc.Node.Types.html#NodeHardForkProtocolConfiguration"><span class="hs-identifier hs-type">NodeHardForkProtocolConfiguration</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Bcc.Node.Types.html#ProtocolFilepaths"><span class="hs-identifier hs-type">ProtocolFilepaths</span></a></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier hs-type">ExceptT</span></a></span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationError"><span class="hs-identifier hs-type">BccProtocolInstantiationError</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">IO</span></a></span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Types.html#SomeConsensusProtocol"><span class="hs-identifier hs-type">SomeConsensusProtocol</span></a></span><span>
+</span><span id="line-68"></span><span id="mkSomeConsensusProtocolBcc"><span class="annot"><span class="annottext">mkSomeConsensusProtocolBcc :: NodeColeProtocolConfiguration
+-&gt; NodeSophieProtocolConfiguration
+-&gt; NodeAurumProtocolConfiguration
+-&gt; NodeHardForkProtocolConfiguration
+-&gt; Maybe ProtocolFilepaths
+-&gt; ExceptT BccProtocolInstantiationError IO SomeConsensusProtocol
+</span><a href="Bcc.Node.Protocol.Bcc.html#mkSomeConsensusProtocolBcc"><span class="hs-identifier hs-var hs-var">mkSomeConsensusProtocolBcc</span></a></span></span><span> </span><span class="annot"><a href="Bcc.Node.Types.html#NodeColeProtocolConfiguration"><span class="hs-identifier hs-type">NodeColeProtocolConfiguration</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-69"></span><span>                             </span><span id="local-6989586621679425282"><span class="annot"><span class="annottext">GenesisFile
+npcColeGenesisFile :: NodeColeProtocolConfiguration -&gt; GenesisFile
+npcColeGenesisFile :: GenesisFile
+</span><a href="Bcc.Node.Types.html#npcColeGenesisFile"><span class="hs-identifier hs-var hs-var">npcColeGenesisFile</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-70"></span><span>                             </span><span id="local-6989586621679425280"><span class="annot"><span class="annottext">Maybe GenesisHash
+npcColeGenesisFileHash :: NodeColeProtocolConfiguration -&gt; Maybe GenesisHash
+npcColeGenesisFileHash :: Maybe GenesisHash
+</span><a href="Bcc.Node.Types.html#npcColeGenesisFileHash"><span class="hs-identifier hs-var hs-var">npcColeGenesisFileHash</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-71"></span><span>                             </span><span id="local-6989586621679425278"><span class="annot"><span class="annottext">RequiresNetworkMagic
+npcColeReqNetworkMagic :: NodeColeProtocolConfiguration -&gt; RequiresNetworkMagic
+npcColeReqNetworkMagic :: RequiresNetworkMagic
+</span><a href="Bcc.Node.Types.html#npcColeReqNetworkMagic"><span class="hs-identifier hs-var hs-var">npcColeReqNetworkMagic</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-72"></span><span>                             </span><span id="local-6989586621679425276"><span class="annot"><span class="annottext">Maybe Double
+npcColePbftSignatureThresh :: NodeColeProtocolConfiguration -&gt; Maybe Double
+npcColePbftSignatureThresh :: Maybe Double
+</span><a href="Bcc.Node.Types.html#npcColePbftSignatureThresh"><span class="hs-identifier hs-var hs-var">npcColePbftSignatureThresh</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-73"></span><span>                             </span><span id="local-6989586621679425274"><span class="annot"><span class="annottext">ApplicationName
+npcColeApplicationName :: NodeColeProtocolConfiguration -&gt; ApplicationName
+npcColeApplicationName :: ApplicationName
+</span><a href="Bcc.Node.Types.html#npcColeApplicationName"><span class="hs-identifier hs-var hs-var">npcColeApplicationName</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-74"></span><span>                             </span><span id="local-6989586621679425272"><span class="annot"><span class="annottext">NumSoftwareVersion
+npcColeApplicationVersion :: NodeColeProtocolConfiguration -&gt; NumSoftwareVersion
+npcColeApplicationVersion :: NumSoftwareVersion
+</span><a href="Bcc.Node.Types.html#npcColeApplicationVersion"><span class="hs-identifier hs-var hs-var">npcColeApplicationVersion</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-75"></span><span>                             </span><span id="local-6989586621679425270"><span class="annot"><span class="annottext">Word16
+npcColeSupportedProtocolVersionMajor :: NodeColeProtocolConfiguration -&gt; Word16
+npcColeSupportedProtocolVersionMajor :: Word16
+</span><a href="Bcc.Node.Types.html#npcColeSupportedProtocolVersionMajor"><span class="hs-identifier hs-var hs-var">npcColeSupportedProtocolVersionMajor</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-76"></span><span>                             </span><span id="local-6989586621679425268"><span class="annot"><span class="annottext">Word16
+npcColeSupportedProtocolVersionSentry :: NodeColeProtocolConfiguration -&gt; Word16
+npcColeSupportedProtocolVersionSentry :: Word16
+</span><a href="Bcc.Node.Types.html#npcColeSupportedProtocolVersionSentry"><span class="hs-identifier hs-var hs-var">npcColeSupportedProtocolVersionSentry</span></a></span></span><span>
+</span><span id="line-77"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-78"></span><span>                           </span><span class="annot"><a href="Bcc.Node.Types.html#NodeSophieProtocolConfiguration"><span class="hs-identifier hs-type">NodeSophieProtocolConfiguration</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-79"></span><span>                             </span><span id="local-6989586621679425265"><span class="annot"><span class="annottext">GenesisFile
+npcSophieGenesisFile :: NodeSophieProtocolConfiguration -&gt; GenesisFile
+npcSophieGenesisFile :: GenesisFile
+</span><a href="Bcc.Node.Types.html#npcSophieGenesisFile"><span class="hs-identifier hs-var hs-var">npcSophieGenesisFile</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-80"></span><span>                             </span><span id="local-6989586621679425263"><span class="annot"><span class="annottext">Maybe GenesisHash
+npcSophieGenesisFileHash :: NodeSophieProtocolConfiguration -&gt; Maybe GenesisHash
+npcSophieGenesisFileHash :: Maybe GenesisHash
+</span><a href="Bcc.Node.Types.html#npcSophieGenesisFileHash"><span class="hs-identifier hs-var hs-var">npcSophieGenesisFileHash</span></a></span></span><span>
+</span><span id="line-81"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-82"></span><span>                           </span><span class="annot"><a href="Bcc.Node.Types.html#NodeAurumProtocolConfiguration"><span class="hs-identifier hs-type">NodeAurumProtocolConfiguration</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-83"></span><span>                             </span><span id="local-6989586621679425260"><span class="annot"><span class="annottext">GenesisFile
+npcAurumGenesisFile :: NodeAurumProtocolConfiguration -&gt; GenesisFile
+npcAurumGenesisFile :: GenesisFile
+</span><a href="Bcc.Node.Types.html#npcAurumGenesisFile"><span class="hs-identifier hs-var hs-var">npcAurumGenesisFile</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-84"></span><span>                             </span><span id="local-6989586621679425258"><span class="annot"><span class="annottext">Maybe GenesisHash
+npcAurumGenesisFileHash :: NodeAurumProtocolConfiguration -&gt; Maybe GenesisHash
+npcAurumGenesisFileHash :: Maybe GenesisHash
+</span><a href="Bcc.Node.Types.html#npcAurumGenesisFileHash"><span class="hs-identifier hs-var hs-var">npcAurumGenesisFileHash</span></a></span></span><span>
+</span><span id="line-85"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-86"></span><span>                           </span><span class="annot"><a href="Bcc.Node.Types.html#NodeHardForkProtocolConfiguration"><span class="hs-identifier hs-type">NodeHardForkProtocolConfiguration</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-87"></span><span>                            </span><span class="hs-comment">-- npcTestEnableDevelopmentHardForkEras,</span><span>
+</span><span id="line-88"></span><span>                            </span><span class="hs-comment">-- During testing of the Aurum era, we conditionally declared that we</span><span>
+</span><span id="line-89"></span><span>                            </span><span class="hs-comment">-- knew about the Aurum era. We do so only when a config option for</span><span>
+</span><span id="line-90"></span><span>                            </span><span class="hs-comment">-- testing development/unstable eras is used. This lets us include</span><span>
+</span><span id="line-91"></span><span>                            </span><span class="hs-comment">-- not-yet-ready eras in released node versions without mainnet nodes</span><span>
+</span><span id="line-92"></span><span>                            </span><span class="hs-comment">-- prematurely advertising that they could hard fork into the new era.</span><span>
+</span><span id="line-93"></span><span>                             </span><span id="local-6989586621679425255"><span class="annot"><span class="annottext">Maybe EpochNo
+npcTestSophieHardForkAtEpoch :: NodeHardForkProtocolConfiguration -&gt; Maybe EpochNo
+npcTestSophieHardForkAtEpoch :: Maybe EpochNo
+</span><a href="Bcc.Node.Types.html#npcTestSophieHardForkAtEpoch"><span class="hs-identifier hs-var hs-var">npcTestSophieHardForkAtEpoch</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-94"></span><span>                             </span><span id="local-6989586621679425253"><span class="annot"><span class="annottext">Maybe Word
+npcTestSophieHardForkAtVersion :: NodeHardForkProtocolConfiguration -&gt; Maybe Word
+npcTestSophieHardForkAtVersion :: Maybe Word
+</span><a href="Bcc.Node.Types.html#npcTestSophieHardForkAtVersion"><span class="hs-identifier hs-var hs-var">npcTestSophieHardForkAtVersion</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-95"></span><span>                             </span><span id="local-6989586621679425251"><span class="annot"><span class="annottext">Maybe EpochNo
+npcTestEvieHardForkAtEpoch :: NodeHardForkProtocolConfiguration -&gt; Maybe EpochNo
+npcTestEvieHardForkAtEpoch :: Maybe EpochNo
+</span><a href="Bcc.Node.Types.html#npcTestEvieHardForkAtEpoch"><span class="hs-identifier hs-var hs-var">npcTestEvieHardForkAtEpoch</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-96"></span><span>                             </span><span id="local-6989586621679425249"><span class="annot"><span class="annottext">Maybe Word
+npcTestEvieHardForkAtVersion :: NodeHardForkProtocolConfiguration -&gt; Maybe Word
+npcTestEvieHardForkAtVersion :: Maybe Word
+</span><a href="Bcc.Node.Types.html#npcTestEvieHardForkAtVersion"><span class="hs-identifier hs-var hs-var">npcTestEvieHardForkAtVersion</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-97"></span><span>                             </span><span id="local-6989586621679425247"><span class="annot"><span class="annottext">Maybe EpochNo
+npcTestJenHardForkAtEpoch :: NodeHardForkProtocolConfiguration -&gt; Maybe EpochNo
+npcTestJenHardForkAtEpoch :: Maybe EpochNo
+</span><a href="Bcc.Node.Types.html#npcTestJenHardForkAtEpoch"><span class="hs-identifier hs-var hs-var">npcTestJenHardForkAtEpoch</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-98"></span><span>                             </span><span id="local-6989586621679425245"><span class="annot"><span class="annottext">Maybe Word
+npcTestJenHardForkAtVersion :: NodeHardForkProtocolConfiguration -&gt; Maybe Word
+npcTestJenHardForkAtVersion :: Maybe Word
+</span><a href="Bcc.Node.Types.html#npcTestJenHardForkAtVersion"><span class="hs-identifier hs-var hs-var">npcTestJenHardForkAtVersion</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-99"></span><span>                             </span><span id="local-6989586621679425243"><span class="annot"><span class="annottext">Maybe EpochNo
+npcTestAurumHardForkAtEpoch :: NodeHardForkProtocolConfiguration -&gt; Maybe EpochNo
+npcTestAurumHardForkAtEpoch :: Maybe EpochNo
+</span><a href="Bcc.Node.Types.html#npcTestAurumHardForkAtEpoch"><span class="hs-identifier hs-var hs-var">npcTestAurumHardForkAtEpoch</span></a></span></span><span class="hs-special">,</span><span>
+</span><span id="line-100"></span><span>                             </span><span id="local-6989586621679425241"><span class="annot"><span class="annottext">Maybe Word
+npcTestAurumHardForkAtVersion :: NodeHardForkProtocolConfiguration -&gt; Maybe Word
+npcTestAurumHardForkAtVersion :: Maybe Word
+</span><a href="Bcc.Node.Types.html#npcTestAurumHardForkAtVersion"><span class="hs-identifier hs-var hs-var">npcTestAurumHardForkAtVersion</span></a></span></span><span>
+</span><span id="line-101"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-102"></span><span>                           </span><span id="local-6989586621679425239"><span class="annot"><span class="annottext">Maybe ProtocolFilepaths
+</span><a href="#local-6989586621679425239"><span class="hs-identifier hs-var">files</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-103"></span><span>    </span><span id="local-6989586621679425238"><span class="annot"><span class="annottext">Config
+</span><a href="#local-6989586621679425238"><span class="hs-identifier hs-var">coleGenesis</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-104"></span><span>      </span><span class="annot"><span class="annottext">(ColeProtocolInstantiationError -&gt; BccProtocolInstantiationError)
+-&gt; ExceptT ColeProtocolInstantiationError IO Config
+-&gt; ExceptT BccProtocolInstantiationError IO Config
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">ColeProtocolInstantiationError -&gt; BccProtocolInstantiationError
+</span><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationErrorCole"><span class="hs-identifier hs-var">BccProtocolInstantiationErrorCole</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT ColeProtocolInstantiationError IO Config
+ -&gt; ExceptT BccProtocolInstantiationError IO Config)
+-&gt; ExceptT ColeProtocolInstantiationError IO Config
+-&gt; ExceptT BccProtocolInstantiationError IO Config
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-105"></span><span>        </span><span class="annot"><span class="annottext">GenesisFile
+-&gt; Maybe GenesisHash
+-&gt; RequiresNetworkMagic
+-&gt; ExceptT ColeProtocolInstantiationError IO Config
+</span><a href="Bcc.Node.Protocol.Cole.html#readGenesis"><span class="hs-identifier hs-var">Cole.readGenesis</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisFile
+</span><a href="#local-6989586621679425282"><span class="hs-identifier hs-var">npcColeGenesisFile</span></a></span><span>
+</span><span id="line-106"></span><span>                          </span><span class="annot"><span class="annottext">Maybe GenesisHash
+</span><a href="#local-6989586621679425280"><span class="hs-identifier hs-var">npcColeGenesisFileHash</span></a></span><span>
+</span><span id="line-107"></span><span>                          </span><span class="annot"><span class="annottext">RequiresNetworkMagic
+</span><a href="#local-6989586621679425278"><span class="hs-identifier hs-var">npcColeReqNetworkMagic</span></a></span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span>    </span><span id="local-6989586621679425235"><span class="annot"><span class="annottext">Maybe ColeLeaderCredentials
+</span><a href="#local-6989586621679425235"><span class="hs-identifier hs-var">coleLeaderCredentials</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-110"></span><span>      </span><span class="annot"><span class="annottext">(ColeProtocolInstantiationError -&gt; BccProtocolInstantiationError)
+-&gt; ExceptT
+     ColeProtocolInstantiationError IO (Maybe ColeLeaderCredentials)
+-&gt; ExceptT
+     BccProtocolInstantiationError IO (Maybe ColeLeaderCredentials)
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">ColeProtocolInstantiationError -&gt; BccProtocolInstantiationError
+</span><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationErrorCole"><span class="hs-identifier hs-var">BccProtocolInstantiationErrorCole</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT
+   ColeProtocolInstantiationError IO (Maybe ColeLeaderCredentials)
+ -&gt; ExceptT
+      BccProtocolInstantiationError IO (Maybe ColeLeaderCredentials))
+-&gt; ExceptT
+     ColeProtocolInstantiationError IO (Maybe ColeLeaderCredentials)
+-&gt; ExceptT
+     BccProtocolInstantiationError IO (Maybe ColeLeaderCredentials)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-111"></span><span>        </span><span class="annot"><span class="annottext">Config
+-&gt; Maybe ProtocolFilepaths
+-&gt; ExceptT
+     ColeProtocolInstantiationError IO (Maybe ColeLeaderCredentials)
+</span><a href="Bcc.Node.Protocol.Cole.html#readLeaderCredentials"><span class="hs-identifier hs-var">Cole.readLeaderCredentials</span></a></span><span> </span><span class="annot"><span class="annottext">Config
+</span><a href="#local-6989586621679425238"><span class="hs-identifier hs-var">coleGenesis</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe ProtocolFilepaths
+</span><a href="#local-6989586621679425239"><span class="hs-identifier hs-var">files</span></a></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679425233"><span class="annot"><span class="annottext">SophieGenesis StandardSophie
+</span><a href="#local-6989586621679425233"><span class="hs-identifier hs-var">sophieGenesis</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679425232"><span class="annot"><span class="annottext">GenesisHash
+</span><a href="#local-6989586621679425232"><span class="hs-identifier hs-var">sophieGenesisHash</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-114"></span><span>      </span><span class="annot"><span class="annottext">(GenesisReadError -&gt; BccProtocolInstantiationError)
+-&gt; ExceptT
+     GenesisReadError IO (SophieGenesis StandardSophie, GenesisHash)
+-&gt; ExceptT
+     BccProtocolInstantiationError
+     IO
+     (SophieGenesis StandardSophie, GenesisHash)
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">GenesisReadError -&gt; BccProtocolInstantiationError
+</span><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationSophieGenesisReadError"><span class="hs-identifier hs-var">BccProtocolInstantiationSophieGenesisReadError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT
+   GenesisReadError IO (SophieGenesis StandardSophie, GenesisHash)
+ -&gt; ExceptT
+      BccProtocolInstantiationError
+      IO
+      (SophieGenesis StandardSophie, GenesisHash))
+-&gt; ExceptT
+     GenesisReadError IO (SophieGenesis StandardSophie, GenesisHash)
+-&gt; ExceptT
+     BccProtocolInstantiationError
+     IO
+     (SophieGenesis StandardSophie, GenesisHash)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-115"></span><span>        </span><span class="annot"><span class="annottext">GenesisFile
+-&gt; Maybe GenesisHash
+-&gt; ExceptT
+     GenesisReadError IO (SophieGenesis StandardSophie, GenesisHash)
+</span><a href="Bcc.Node.Protocol.Sophie.html#readGenesis"><span class="hs-identifier hs-var">Sophie.readGenesis</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisFile
+</span><a href="#local-6989586621679425265"><span class="hs-identifier hs-var">npcSophieGenesisFile</span></a></span><span>
+</span><span id="line-116"></span><span>                            </span><span class="annot"><span class="annottext">Maybe GenesisHash
+</span><a href="#local-6989586621679425263"><span class="hs-identifier hs-var">npcSophieGenesisFileHash</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679425229"><span class="annot"><span class="annottext">AurumGenesis
+</span><a href="#local-6989586621679425229"><span class="hs-identifier hs-var">aurumGenesis</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679425228"><span class="annot"><span class="annottext">GenesisHash
+</span><a href="#local-6989586621679425228"><span class="hs-identifier hs-var">_aurumGenesisHash</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-119"></span><span>      </span><span class="annot"><span class="annottext">(GenesisReadError -&gt; BccProtocolInstantiationError)
+-&gt; ExceptT GenesisReadError IO (AurumGenesis, GenesisHash)
+-&gt; ExceptT
+     BccProtocolInstantiationError IO (AurumGenesis, GenesisHash)
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">GenesisReadError -&gt; BccProtocolInstantiationError
+</span><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationAurumGenesisReadError"><span class="hs-identifier hs-var">BccProtocolInstantiationAurumGenesisReadError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT GenesisReadError IO (AurumGenesis, GenesisHash)
+ -&gt; ExceptT
+      BccProtocolInstantiationError IO (AurumGenesis, GenesisHash))
+-&gt; ExceptT GenesisReadError IO (AurumGenesis, GenesisHash)
+-&gt; ExceptT
+     BccProtocolInstantiationError IO (AurumGenesis, GenesisHash)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-120"></span><span>        </span><span class="annot"><span class="annottext">GenesisFile
+-&gt; Maybe GenesisHash
+-&gt; ExceptT GenesisReadError IO (AurumGenesis, GenesisHash)
+</span><a href="Bcc.Node.Protocol.Aurum.html#readGenesis"><span class="hs-identifier hs-var">Aurum.readGenesis</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisFile
+</span><a href="#local-6989586621679425260"><span class="hs-identifier hs-var">npcAurumGenesisFile</span></a></span><span>
+</span><span id="line-121"></span><span>                           </span><span class="annot"><span class="annottext">Maybe GenesisHash
+</span><a href="#local-6989586621679425258"><span class="hs-identifier hs-var">npcAurumGenesisFileHash</span></a></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span>    </span><span id="local-6989586621679425225"><span class="annot"><span class="annottext">[TOptimumLeaderCredentials StandardCrypto]
+</span><a href="#local-6989586621679425225"><span class="hs-identifier hs-var">sophieLeaderCredentials</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-124"></span><span>      </span><span class="annot"><span class="annottext">(OptimumLeaderCredentialsError -&gt; BccProtocolInstantiationError)
+-&gt; ExceptT
+     OptimumLeaderCredentialsError
+     IO
+     [TOptimumLeaderCredentials StandardCrypto]
+-&gt; ExceptT
+     BccProtocolInstantiationError
+     IO
+     [TOptimumLeaderCredentials StandardCrypto]
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">OptimumLeaderCredentialsError -&gt; BccProtocolInstantiationError
+</span><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationOptimumLeaderCredentialsError"><span class="hs-identifier hs-var">BccProtocolInstantiationOptimumLeaderCredentialsError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT
+   OptimumLeaderCredentialsError
+   IO
+   [TOptimumLeaderCredentials StandardCrypto]
+ -&gt; ExceptT
+      BccProtocolInstantiationError
+      IO
+      [TOptimumLeaderCredentials StandardCrypto])
+-&gt; ExceptT
+     OptimumLeaderCredentialsError
+     IO
+     [TOptimumLeaderCredentials StandardCrypto]
+-&gt; ExceptT
+     BccProtocolInstantiationError
+     IO
+     [TOptimumLeaderCredentials StandardCrypto]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-125"></span><span>        </span><span class="annot"><span class="annottext">Maybe ProtocolFilepaths
+-&gt; ExceptT
+     OptimumLeaderCredentialsError
+     IO
+     [TOptimumLeaderCredentials StandardCrypto]
+</span><a href="Bcc.Node.Protocol.Sophie.html#readLeaderCredentials"><span class="hs-identifier hs-var">Sophie.readLeaderCredentials</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe ProtocolFilepaths
+</span><a href="#local-6989586621679425239"><span class="hs-identifier hs-var">files</span></a></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-comment">--TODO: all these protocol versions below are confusing and unnecessary.</span><span>
+</span><span id="line-128"></span><span>    </span><span class="hs-comment">-- It could and should all be automated and these config entries eliminated.</span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><span class="annottext">SomeConsensusProtocol
+-&gt; ExceptT BccProtocolInstantiationError IO SomeConsensusProtocol
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">return</span></a></span><span> </span><span class="annot"><span class="annottext">(SomeConsensusProtocol
+ -&gt; ExceptT BccProtocolInstantiationError IO SomeConsensusProtocol)
+-&gt; SomeConsensusProtocol
+-&gt; ExceptT BccProtocolInstantiationError IO SomeConsensusProtocol
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$!</span></a></span><span>
+</span><span id="line-130"></span><span>      </span><span class="annot"><span class="annottext">BlockType (HardForkBlock (BccEras StandardCrypto))
+-&gt; ProtocolInfoArgs IO (HardForkBlock (BccEras StandardCrypto))
+-&gt; SomeConsensusProtocol
+forall blk.
+(Protocol IO blk, HasKESMetricsData blk, HasKESInfo blk,
+ TraceConstraints blk) =&gt;
+BlockType blk -&gt; ProtocolInfoArgs IO blk -&gt; SomeConsensusProtocol
+</span><a href="Bcc.Node.Protocol.Types.html#SomeConsensusProtocol"><span class="hs-identifier hs-var">SomeConsensusProtocol</span></a></span><span> </span><span class="annot"><span class="annottext">BlockType (HardForkBlock (BccEras StandardCrypto))
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">BccBlockType</span></a></span><span> </span><span class="annot"><span class="annottext">(ProtocolInfoArgs IO (HardForkBlock (BccEras StandardCrypto))
+ -&gt; SomeConsensusProtocol)
+-&gt; ProtocolInfoArgs IO (HardForkBlock (BccEras StandardCrypto))
+-&gt; SomeConsensusProtocol
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">ProtocolParamsCole
+-&gt; ProtocolParamsSophieBased StandardSophie
+-&gt; ProtocolParamsSophie StandardCrypto
+-&gt; ProtocolParamsEvie StandardCrypto
+-&gt; ProtocolParamsJen StandardCrypto
+-&gt; ProtocolParamsAurum StandardCrypto
+-&gt; ProtocolTransitionParamsSophieBased StandardSophie
+-&gt; ProtocolTransitionParamsSophieBased StandardEvie
+-&gt; ProtocolTransitionParamsSophieBased StandardJen
+-&gt; ProtocolTransitionParamsSophieBased StandardAurum
+-&gt; ProtocolInfoArgs IO (HardForkBlock (BccEras StandardCrypto))
+forall (m :: * -&gt; *).
+ProtocolParamsCole
+-&gt; ProtocolParamsSophieBased StandardSophie
+-&gt; ProtocolParamsSophie StandardCrypto
+-&gt; ProtocolParamsEvie StandardCrypto
+-&gt; ProtocolParamsJen StandardCrypto
+-&gt; ProtocolParamsAurum StandardCrypto
+-&gt; ProtocolTransitionParamsSophieBased StandardSophie
+-&gt; ProtocolTransitionParamsSophieBased StandardEvie
+-&gt; ProtocolTransitionParamsSophieBased StandardJen
+-&gt; ProtocolTransitionParamsSophieBased StandardAurum
+-&gt; ProtocolInfoArgs m (HardForkBlock (BccEras StandardCrypto))
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">ProtocolInfoArgsBcc</span></a></span><span>
+</span><span id="line-131"></span><span>        </span><span class="annot"><span class="annottext">ProtocolParamsCole :: Config
+-&gt; Maybe PBftSignatureThreshold
+-&gt; ProtocolVersion
+-&gt; SoftwareVersion
+-&gt; Maybe ColeLeaderCredentials
+-&gt; Overrides ColeBlock
+-&gt; ProtocolParamsCole
+</span><span class="hs-identifier hs-type">Consensus.ProtocolParamsCole</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-132"></span><span>          </span><span class="annot"><span class="annottext">$sel:coleGenesis:ProtocolParamsCole :: Config
+</span><span class="hs-identifier hs-var">coleGenesis</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Config
+</span><a href="#local-6989586621679425238"><span class="hs-identifier hs-var">coleGenesis</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-133"></span><span>          </span><span class="annot"><span class="annottext">$sel:colePbftSignatureThreshold:ProtocolParamsCole :: Maybe PBftSignatureThreshold
+</span><span class="hs-identifier hs-var">colePbftSignatureThreshold</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-134"></span><span>            </span><span class="annot"><span class="annottext">Double -&gt; PBftSignatureThreshold
+</span><span class="hs-identifier hs-var">PBftSignatureThreshold</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; PBftSignatureThreshold)
+-&gt; Maybe Double -&gt; Maybe PBftSignatureThreshold
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;$&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679425276"><span class="hs-identifier hs-var">npcColePbftSignatureThresh</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>          </span><span class="hs-comment">-- This is /not/ the Cole protocol version. It is the protocol</span><span>
+</span><span id="line-137"></span><span>          </span><span class="hs-comment">-- version that this node will use in blocks it creates. It is used</span><span>
+</span><span id="line-138"></span><span>          </span><span class="hs-comment">-- in the Cole update mechanism to signal that this block-producing</span><span>
+</span><span id="line-139"></span><span>          </span><span class="hs-comment">-- node is ready to move to the new protocol. For example, when the</span><span>
+</span><span id="line-140"></span><span>          </span><span class="hs-comment">-- protocol version (according to the ledger state) is 0, this setting</span><span>
+</span><span id="line-141"></span><span>          </span><span class="hs-comment">-- should be 1 when we are ready to move. Similarly when the current</span><span>
+</span><span id="line-142"></span><span>          </span><span class="hs-comment">-- protocol version is 1, this should be 2 to indicate we are ready</span><span>
+</span><span id="line-143"></span><span>          </span><span class="hs-comment">-- to move into the Sophie era.</span><span>
+</span><span id="line-144"></span><span>          </span><span class="annot"><span class="annottext">$sel:coleProtocolVersion:ProtocolParamsCole :: ProtocolVersion
+</span><span class="hs-identifier hs-var">coleProtocolVersion</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-145"></span><span>            </span><span class="annot"><span class="annottext">Word16 -&gt; Word16 -&gt; ProtocolVersion
+</span><span class="hs-identifier hs-var">Cole.ProtocolVersion</span></span><span>
+</span><span id="line-146"></span><span>              </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679425270"><span class="hs-identifier hs-var">npcColeSupportedProtocolVersionMajor</span></a></span><span>
+</span><span id="line-147"></span><span>              </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679425268"><span class="hs-identifier hs-var">npcColeSupportedProtocolVersionSentry</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-148"></span><span>          </span><span class="annot"><span class="annottext">$sel:coleSoftwareVersion:ProtocolParamsCole :: SoftwareVersion
+</span><span class="hs-identifier hs-var">coleSoftwareVersion</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-149"></span><span>            </span><span class="annot"><span class="annottext">ApplicationName -&gt; NumSoftwareVersion -&gt; SoftwareVersion
+</span><span class="hs-identifier hs-var">Cole.SoftwareVersion</span></span><span>
+</span><span id="line-150"></span><span>              </span><span class="annot"><span class="annottext">ApplicationName
+</span><a href="#local-6989586621679425274"><span class="hs-identifier hs-var">npcColeApplicationName</span></a></span><span>
+</span><span id="line-151"></span><span>              </span><span class="annot"><span class="annottext">NumSoftwareVersion
+</span><a href="#local-6989586621679425272"><span class="hs-identifier hs-var">npcColeApplicationVersion</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-152"></span><span>          </span><span class="annot"><span class="annottext">$sel:coleLeaderCredentials:ProtocolParamsCole :: Maybe ColeLeaderCredentials
+</span><span class="hs-identifier hs-var">coleLeaderCredentials</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-153"></span><span>            </span><span class="annot"><span class="annottext">Maybe ColeLeaderCredentials
+</span><a href="#local-6989586621679425235"><span class="hs-identifier hs-var">coleLeaderCredentials</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-154"></span><span>          </span><span class="annot"><span class="annottext">$sel:coleMaxTxCapacityOverrides:ProtocolParamsCole :: Overrides ColeBlock
+</span><span class="hs-identifier hs-var">coleMaxTxCapacityOverrides</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-155"></span><span>            </span><span class="annot"><span class="annottext">TxMeasure ColeBlock -&gt; Overrides ColeBlock
+forall blk. TxMeasure blk -&gt; Overrides blk
+</span><span class="hs-identifier hs-var">TxLimits.mkOverrides</span></span><span> </span><span class="annot"><span class="annottext">TxMeasure ColeBlock
+forall a. BoundedMeasure a =&gt; a
+</span><span class="hs-identifier hs-var">TxLimits.noOverridesMeasure</span></span><span>
+</span><span id="line-156"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-157"></span><span>        </span><span class="annot"><span class="annottext">ProtocolParamsSophieBased :: forall era.
+SophieGenesis era
+-&gt; Nonce
+-&gt; [TOptimumLeaderCredentials (EraCrypto era)]
+-&gt; ProtocolParamsSophieBased era
+</span><span class="hs-identifier hs-type">Consensus.ProtocolParamsSophieBased</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-158"></span><span>          </span><span class="annot"><span class="annottext">$sel:sophieBasedGenesis:ProtocolParamsSophieBased :: SophieGenesis StandardSophie
+</span><span class="hs-identifier hs-var">sophieBasedGenesis</span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SophieGenesis StandardSophie
+</span><a href="#local-6989586621679425233"><span class="hs-identifier hs-var">sophieGenesis</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-159"></span><span>          </span><span class="annot"><span class="annottext">$sel:sophieBasedInitialNonce:ProtocolParamsSophieBased :: Nonce
+</span><span class="hs-identifier hs-var">sophieBasedInitialNonce</span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GenesisHash -&gt; Nonce
+</span><a href="Bcc.Node.Protocol.Sophie.html#genesisHashToOptimumNonce"><span class="hs-identifier hs-var">Sophie.genesisHashToOptimumNonce</span></a></span><span>
+</span><span id="line-160"></span><span>                                            </span><span class="annot"><span class="annottext">GenesisHash
+</span><a href="#local-6989586621679425232"><span class="hs-identifier hs-var">sophieGenesisHash</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-161"></span><span>          </span><span class="annot"><span class="annottext">$sel:sophieBasedLeaderCredentials:ProtocolParamsSophieBased :: [TOptimumLeaderCredentials (EraCrypto StandardSophie)]
+</span><span class="hs-identifier hs-var">sophieBasedLeaderCredentials</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[TOptimumLeaderCredentials StandardCrypto]
+[TOptimumLeaderCredentials (EraCrypto StandardSophie)]
+</span><a href="#local-6989586621679425225"><span class="hs-identifier hs-var">sophieLeaderCredentials</span></a></span><span>
+</span><span id="line-162"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-163"></span><span>        </span><span class="annot"><span class="annottext">ProtocolParamsSophie :: forall c.
+ProtVer
+-&gt; Overrides (SophieBlock (SophieEra c)) -&gt; ProtocolParamsSophie c
+</span><span class="hs-identifier hs-type">Consensus.ProtocolParamsSophie</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-164"></span><span>          </span><span class="hs-comment">-- This is /not/ the Sophie protocol version. It is the protocol</span><span>
+</span><span id="line-165"></span><span>          </span><span class="hs-comment">-- version that this node will declare that it understands, when it</span><span>
+</span><span id="line-166"></span><span>          </span><span class="hs-comment">-- is in the Sophie era. That is, it is the version of protocol</span><span>
+</span><span id="line-167"></span><span>          </span><span class="hs-comment">-- /after/ Sophie, i.e. Evie.</span><span>
+</span><span id="line-168"></span><span>          </span><span class="annot"><span class="annottext">$sel:sophieProtVer:ProtocolParamsSophie :: ProtVer
+</span><span class="hs-identifier hs-var">sophieProtVer</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-169"></span><span>            </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; ProtVer
+</span><span class="hs-identifier hs-var">ProtVer</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span>
+</span><span id="line-170"></span><span>          </span><span class="annot"><span class="annottext">$sel:sophieMaxTxCapacityOverrides:ProtocolParamsSophie :: Overrides (SophieBlock StandardSophie)
+</span><span class="hs-identifier hs-var">sophieMaxTxCapacityOverrides</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-171"></span><span>            </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardSophie)
+-&gt; Overrides (SophieBlock StandardSophie)
+forall blk. TxMeasure blk -&gt; Overrides blk
+</span><span class="hs-identifier hs-var">TxLimits.mkOverrides</span></span><span> </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardSophie)
+forall a. BoundedMeasure a =&gt; a
+</span><span class="hs-identifier hs-var">TxLimits.noOverridesMeasure</span></span><span>
+</span><span id="line-172"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-173"></span><span>        </span><span class="annot"><span class="annottext">ProtocolParamsEvie :: forall c.
+ProtVer
+-&gt; Overrides (SophieBlock (EvieEra c)) -&gt; ProtocolParamsEvie c
+</span><span class="hs-identifier hs-type">Consensus.ProtocolParamsEvie</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-174"></span><span>          </span><span class="hs-comment">-- This is /not/ the Evie protocol version. It is the protocol</span><span>
+</span><span id="line-175"></span><span>          </span><span class="hs-comment">-- version that this node will declare that it understands, when it</span><span>
+</span><span id="line-176"></span><span>          </span><span class="hs-comment">-- is in the Evie era. That is, it is the version of protocol</span><span>
+</span><span id="line-177"></span><span>          </span><span class="hs-comment">-- /after/ Evie, i.e. Jen.</span><span>
+</span><span id="line-178"></span><span>          </span><span class="annot"><span class="annottext">$sel:evieProtVer:ProtocolParamsEvie :: ProtVer
+</span><span class="hs-identifier hs-var">evieProtVer</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-179"></span><span>            </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; ProtVer
+</span><span class="hs-identifier hs-var">ProtVer</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span>
+</span><span id="line-180"></span><span>          </span><span class="annot"><span class="annottext">$sel:evieMaxTxCapacityOverrides:ProtocolParamsEvie :: Overrides (SophieBlock StandardEvie)
+</span><span class="hs-identifier hs-var">evieMaxTxCapacityOverrides</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-181"></span><span>            </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardEvie)
+-&gt; Overrides (SophieBlock StandardEvie)
+forall blk. TxMeasure blk -&gt; Overrides blk
+</span><span class="hs-identifier hs-var">TxLimits.mkOverrides</span></span><span> </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardEvie)
+forall a. BoundedMeasure a =&gt; a
+</span><span class="hs-identifier hs-var">TxLimits.noOverridesMeasure</span></span><span>
+</span><span id="line-182"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-183"></span><span>        </span><span class="annot"><span class="annottext">ProtocolParamsJen :: forall c.
+ProtVer
+-&gt; Overrides (SophieBlock (JenEra c)) -&gt; ProtocolParamsJen c
+</span><span class="hs-identifier hs-type">Consensus.ProtocolParamsJen</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-184"></span><span>          </span><span class="hs-comment">-- This is /not/ the Jen protocol version. It is the protocol</span><span>
+</span><span id="line-185"></span><span>          </span><span class="hs-comment">-- version that this node will declare that it understands, when it</span><span>
+</span><span id="line-186"></span><span>          </span><span class="hs-comment">-- is in the Jen era. That is, it is the version of protocol</span><span>
+</span><span id="line-187"></span><span>          </span><span class="hs-comment">-- /after/ Jen, i.e. Aurum.</span><span>
+</span><span id="line-188"></span><span>          </span><span class="annot"><span class="annottext">$sel:jenProtVer:ProtocolParamsJen :: ProtVer
+</span><span class="hs-identifier hs-var">jenProtVer</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; ProtVer
+</span><span class="hs-identifier hs-var">ProtVer</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">5</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span>
+</span><span id="line-189"></span><span>          </span><span class="annot"><span class="annottext">$sel:jenMaxTxCapacityOverrides:ProtocolParamsJen :: Overrides (SophieBlock StandardJen)
+</span><span class="hs-identifier hs-var">jenMaxTxCapacityOverrides</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-190"></span><span>            </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardJen)
+-&gt; Overrides (SophieBlock StandardJen)
+forall blk. TxMeasure blk -&gt; Overrides blk
+</span><span class="hs-identifier hs-var">TxLimits.mkOverrides</span></span><span> </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardJen)
+forall a. BoundedMeasure a =&gt; a
+</span><span class="hs-identifier hs-var">TxLimits.noOverridesMeasure</span></span><span>
+</span><span id="line-191"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-192"></span><span>        </span><span class="annot"><span class="annottext">ProtocolParamsAurum :: forall c.
+ProtVer
+-&gt; Overrides (SophieBlock (AurumEra c)) -&gt; ProtocolParamsAurum c
+</span><span class="hs-identifier hs-type">Consensus.ProtocolParamsAurum</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-193"></span><span>          </span><span class="hs-comment">-- This is /not/ the Aurum protocol version. It is the protocol</span><span>
+</span><span id="line-194"></span><span>          </span><span class="hs-comment">-- version that this node will declare that it understands, when it</span><span>
+</span><span id="line-195"></span><span>          </span><span class="hs-comment">-- is in the Aurum era. Since Aurum is currently the last known</span><span>
+</span><span id="line-196"></span><span>          </span><span class="hs-comment">-- protocol version then this is also the Aurum protocol version.</span><span>
+</span><span id="line-197"></span><span>          </span><span class="annot"><span class="annottext">$sel:aurumProtVer:ProtocolParamsAurum :: ProtVer
+</span><span class="hs-identifier hs-var">aurumProtVer</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; ProtVer
+</span><span class="hs-identifier hs-var">ProtVer</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">6</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span>
+</span><span id="line-198"></span><span>          </span><span class="annot"><span class="annottext">$sel:aurumMaxTxCapacityOverrides:ProtocolParamsAurum :: Overrides (SophieBlock StandardAurum)
+</span><span class="hs-identifier hs-var">aurumMaxTxCapacityOverrides</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-199"></span><span>            </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardAurum)
+-&gt; Overrides (SophieBlock StandardAurum)
+forall blk. TxMeasure blk -&gt; Overrides blk
+</span><span class="hs-identifier hs-var">TxLimits.mkOverrides</span></span><span> </span><span class="annot"><span class="annottext">TxMeasure (SophieBlock StandardAurum)
+forall a. BoundedMeasure a =&gt; a
+</span><span class="hs-identifier hs-var">TxLimits.noOverridesMeasure</span></span><span>
+</span><span id="line-200"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span>        </span><span class="hs-comment">-- ProtocolParamsTransition specifies the parameters needed to transition between two eras</span><span>
+</span><span id="line-203"></span><span>        </span><span class="hs-comment">-- The comments below also apply for the Sophie -&gt; Evie and Evie -&gt; Jen hard forks.</span><span>
+</span><span id="line-204"></span><span>        </span><span class="hs-comment">-- Cole to Sophie hard fork parameters</span><span>
+</span><span id="line-205"></span><span>        </span><span class="annot"><span class="annottext">ProtocolTransitionParamsSophieBased :: forall era.
+TranslationContext era
+-&gt; TriggerHardFork -&gt; ProtocolTransitionParamsSophieBased era
+</span><span class="hs-identifier hs-type">Consensus.ProtocolTransitionParamsSophieBased</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-206"></span><span>          </span><span class="annot"><span class="annottext">transitionTranslationContext :: TranslationContext StandardSophie
+</span><span class="hs-identifier hs-var">transitionTranslationContext</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-207"></span><span>          </span><span class="annot"><span class="annottext">transitionTrigger :: TriggerHardFork
+</span><span class="hs-identifier hs-var">transitionTrigger</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-208"></span><span>            </span><span class="hs-comment">-- What will trigger the Cole -&gt; Sophie hard fork?</span><span>
+</span><span id="line-209"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="#local-6989586621679425255"><span class="hs-identifier hs-var">npcTestSophieHardForkAtEpoch</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-210"></span><span>
+</span><span id="line-211"></span><span>               </span><span class="hs-comment">-- This specifies the major protocol version number update that will</span><span>
+</span><span id="line-212"></span><span>               </span><span class="hs-comment">-- trigger us moving to the Sophie protocol.</span><span>
+</span><span id="line-213"></span><span>               </span><span class="hs-comment">--</span><span>
+</span><span id="line-214"></span><span>               </span><span class="hs-comment">-- Version 0 is Cole with Shardagnostic classic</span><span>
+</span><span id="line-215"></span><span>               </span><span class="hs-comment">-- Version 1 is Cole with Shardagnostic Permissive BFT</span><span>
+</span><span id="line-216"></span><span>               </span><span class="hs-comment">-- Version 2 is Sophie</span><span>
+</span><span id="line-217"></span><span>               </span><span class="hs-comment">-- Version 3 is Evie</span><span>
+</span><span id="line-218"></span><span>               </span><span class="hs-comment">-- Version 4 is Jen</span><span>
+</span><span id="line-219"></span><span>               </span><span class="hs-comment">-- Version 5 is Aurum</span><span>
+</span><span id="line-220"></span><span>               </span><span class="hs-comment">--</span><span>
+</span><span id="line-221"></span><span>               </span><span class="hs-comment">-- But we also provide an override to allow for simpler test setups</span><span>
+</span><span id="line-222"></span><span>               </span><span class="hs-comment">-- such as triggering at the 0 -&gt; 1 transition .</span><span>
+</span><span id="line-223"></span><span>               </span><span class="hs-comment">--</span><span>
+</span><span id="line-224"></span><span>               </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">Nothing</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtVersion</span></span><span>
+</span><span id="line-225"></span><span>                            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; (Word -&gt; Word16) -&gt; Maybe Word -&gt; Word16
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">maybe</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Word16
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">fromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679425253"><span class="hs-identifier hs-var">npcTestSophieHardForkAtVersion</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span>               </span><span class="hs-comment">-- Alternatively, for testing we can transition at a specific epoch.</span><span>
+</span><span id="line-228"></span><span>               </span><span class="hs-comment">--</span><span>
+</span><span id="line-229"></span><span>               </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">Just</span></a></span><span> </span><span id="local-6989586621679425182"><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425182"><span class="hs-identifier hs-var">epochNo</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">EpochNo -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtEpoch</span></span><span> </span><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425182"><span class="hs-identifier hs-var">epochNo</span></a></span><span>
+</span><span id="line-230"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-231"></span><span>        </span><span class="hs-comment">-- Sophie to Evie hard fork parameters</span><span>
+</span><span id="line-232"></span><span>        </span><span class="annot"><span class="annottext">ProtocolTransitionParamsSophieBased :: forall era.
+TranslationContext era
+-&gt; TriggerHardFork -&gt; ProtocolTransitionParamsSophieBased era
+</span><span class="hs-identifier hs-type">Consensus.ProtocolTransitionParamsSophieBased</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-233"></span><span>          </span><span class="annot"><span class="annottext">transitionTranslationContext :: TranslationContext StandardEvie
+</span><span class="hs-identifier hs-var">transitionTranslationContext</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-234"></span><span>          </span><span class="annot"><span class="annottext">transitionTrigger :: TriggerHardFork
+</span><span class="hs-identifier hs-var">transitionTrigger</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-235"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="#local-6989586621679425251"><span class="hs-identifier hs-var">npcTestEvieHardForkAtEpoch</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-236"></span><span>               </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">Nothing</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtVersion</span></span><span>
+</span><span id="line-237"></span><span>                            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; (Word -&gt; Word16) -&gt; Maybe Word -&gt; Word16
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">maybe</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Word16
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">fromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679425249"><span class="hs-identifier hs-var">npcTestEvieHardForkAtVersion</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-238"></span><span>               </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">Just</span></a></span><span> </span><span id="local-6989586621679425180"><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425180"><span class="hs-identifier hs-var">epochNo</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">EpochNo -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtEpoch</span></span><span> </span><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425180"><span class="hs-identifier hs-var">epochNo</span></a></span><span>
+</span><span id="line-239"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-240"></span><span>        </span><span class="hs-comment">-- Evie to Jen hard fork parameters</span><span>
+</span><span id="line-241"></span><span>        </span><span class="annot"><span class="annottext">ProtocolTransitionParamsSophieBased :: forall era.
+TranslationContext era
+-&gt; TriggerHardFork -&gt; ProtocolTransitionParamsSophieBased era
+</span><span class="hs-identifier hs-type">Consensus.ProtocolTransitionParamsSophieBased</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-242"></span><span>          </span><span class="annot"><span class="annottext">transitionTranslationContext :: TranslationContext StandardJen
+</span><span class="hs-identifier hs-var">transitionTranslationContext</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-243"></span><span>          </span><span class="annot"><span class="annottext">transitionTrigger :: TriggerHardFork
+</span><span class="hs-identifier hs-var">transitionTrigger</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-244"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="#local-6989586621679425247"><span class="hs-identifier hs-var">npcTestJenHardForkAtEpoch</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-245"></span><span>               </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">Nothing</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtVersion</span></span><span>
+</span><span id="line-246"></span><span>                            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; (Word -&gt; Word16) -&gt; Maybe Word -&gt; Word16
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">maybe</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Word16
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">fromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679425245"><span class="hs-identifier hs-var">npcTestJenHardForkAtVersion</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-247"></span><span>               </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">Just</span></a></span><span> </span><span id="local-6989586621679425179"><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425179"><span class="hs-identifier hs-var">epochNo</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">EpochNo -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtEpoch</span></span><span> </span><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425179"><span class="hs-identifier hs-var">epochNo</span></a></span><span>
+</span><span id="line-248"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-249"></span><span>        </span><span class="hs-comment">-- Jen to Aurum hard fork parameters</span><span>
+</span><span id="line-250"></span><span>        </span><span class="annot"><span class="annottext">ProtocolTransitionParamsSophieBased :: forall era.
+TranslationContext era
+-&gt; TriggerHardFork -&gt; ProtocolTransitionParamsSophieBased era
+</span><span class="hs-identifier hs-type">Consensus.ProtocolTransitionParamsSophieBased</span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-251"></span><span>          </span><span class="annot"><span class="annottext">transitionTranslationContext :: TranslationContext StandardAurum
+</span><span class="hs-identifier hs-var">transitionTranslationContext</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AurumGenesis
+TranslationContext StandardAurum
+</span><a href="#local-6989586621679425229"><span class="hs-identifier hs-var">aurumGenesis</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-252"></span><span>          </span><span class="annot"><span class="annottext">transitionTrigger :: TriggerHardFork
+</span><span class="hs-identifier hs-var">transitionTrigger</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-253"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="#local-6989586621679425243"><span class="hs-identifier hs-var">npcTestAurumHardForkAtEpoch</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-254"></span><span>               </span><span class="annot"><span class="annottext">Maybe EpochNo
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">Nothing</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtVersion</span></span><span>
+</span><span id="line-255"></span><span>                            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; (Word -&gt; Word16) -&gt; Maybe Word -&gt; Word16
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">maybe</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><span class="hs-number">5</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Word16
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">fromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679425241"><span class="hs-identifier hs-var">npcTestAurumHardForkAtVersion</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-256"></span><span>               </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">Just</span></a></span><span> </span><span id="local-6989586621679425178"><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425178"><span class="hs-identifier hs-var">epochNo</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">EpochNo -&gt; TriggerHardFork
+</span><span class="hs-identifier hs-var">Consensus.TriggerHardForkAtEpoch</span></span><span> </span><span class="annot"><span class="annottext">EpochNo
+</span><a href="#local-6989586621679425178"><span class="hs-identifier hs-var">epochNo</span></a></span><span>
+</span><span id="line-257"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-258"></span><span>
+</span><span id="line-259"></span><span>
+</span><span id="line-260"></span><span class="hs-comment">------------------------------------------------------------------------------</span><span>
+</span><span id="line-261"></span><span class="hs-comment">-- Errors</span><span>
+</span><span id="line-262"></span><span class="hs-comment">--</span><span>
+</span><span id="line-263"></span><span>
+</span><span id="line-264"></span><span class="hs-keyword">data</span><span> </span><span id="BccProtocolInstantiationError"><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationError"><span class="hs-identifier hs-var">BccProtocolInstantiationError</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-265"></span><span>       </span><span id="BccProtocolInstantiationErrorCole"><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationErrorCole"><span class="hs-identifier hs-var">BccProtocolInstantiationErrorCole</span></a></span></span><span>
+</span><span id="line-266"></span><span>         </span><span class="annot"><a href="Bcc.Node.Protocol.Cole.html#ColeProtocolInstantiationError"><span class="hs-identifier hs-type">Cole.ColeProtocolInstantiationError</span></a></span><span>
+</span><span id="line-267"></span><span>
+</span><span id="line-268"></span><span>     </span><span class="hs-glyph">|</span><span> </span><span id="BccProtocolInstantiationSophieGenesisReadError"><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationSophieGenesisReadError"><span class="hs-identifier hs-var">BccProtocolInstantiationSophieGenesisReadError</span></a></span></span><span>
+</span><span id="line-269"></span><span>         </span><span class="annot"><a href="Bcc.Node.Protocol.Sophie.html#GenesisReadError"><span class="hs-identifier hs-type">Sophie.GenesisReadError</span></a></span><span>
+</span><span id="line-270"></span><span>
+</span><span id="line-271"></span><span>     </span><span class="hs-glyph">|</span><span> </span><span id="BccProtocolInstantiationAurumGenesisReadError"><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationAurumGenesisReadError"><span class="hs-identifier hs-var">BccProtocolInstantiationAurumGenesisReadError</span></a></span></span><span>
+</span><span id="line-272"></span><span>         </span><span class="annot"><a href="Bcc.Node.Protocol.Sophie.html#GenesisReadError"><span class="hs-identifier hs-type">Sophie.GenesisReadError</span></a></span><span>
+</span><span id="line-273"></span><span>
+</span><span id="line-274"></span><span>     </span><span class="hs-glyph">|</span><span> </span><span id="BccProtocolInstantiationOptimumLeaderCredentialsError"><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationOptimumLeaderCredentialsError"><span class="hs-identifier hs-var">BccProtocolInstantiationOptimumLeaderCredentialsError</span></a></span></span><span>
+</span><span id="line-275"></span><span>         </span><span class="annot"><a href="Bcc.Node.Protocol.Sophie.html#OptimumLeaderCredentialsError"><span class="hs-identifier hs-type">Sophie.OptimumLeaderCredentialsError</span></a></span><span>
+</span><span id="line-276"></span><span>
+</span><span id="line-277"></span><span>     </span><span class="hs-glyph">|</span><span> </span><span id="BccProtocolInstantiationErrorAurum"><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationErrorAurum"><span class="hs-identifier hs-var">BccProtocolInstantiationErrorAurum</span></a></span></span><span>
+</span><span id="line-278"></span><span>         </span><span class="annot"><a href="Bcc.Node.Protocol.Aurum.html#AurumProtocolInstantiationError"><span class="hs-identifier hs-type">Aurum.AurumProtocolInstantiationError</span></a></span><span>
+</span><span id="line-279"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679425171"><span id="local-6989586621679425173"><span id="local-6989586621679425175"><span class="annot"><span class="annottext">Int -&gt; BccProtocolInstantiationError -&gt; ShowS
+[BccProtocolInstantiationError] -&gt; ShowS
+BccProtocolInstantiationError -&gt; String
+(Int -&gt; BccProtocolInstantiationError -&gt; ShowS)
+-&gt; (BccProtocolInstantiationError -&gt; String)
+-&gt; ([BccProtocolInstantiationError] -&gt; ShowS)
+-&gt; Show BccProtocolInstantiationError
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [BccProtocolInstantiationError] -&gt; ShowS
+$cshowList :: [BccProtocolInstantiationError] -&gt; ShowS
+show :: BccProtocolInstantiationError -&gt; String
+$cshow :: BccProtocolInstantiationError -&gt; String
+showsPrec :: Int -&gt; BccProtocolInstantiationError -&gt; ShowS
+$cshowsPrec :: Int -&gt; BccProtocolInstantiationError -&gt; ShowS
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span>
+</span><span id="line-280"></span><span>
+</span><span id="line-281"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationError"><span class="hs-identifier hs-type">BccProtocolInstantiationError</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-282"></span><span>  </span><span id="local-6989586621679425166"><span class="annot"><span class="annottext">displayError :: BccProtocolInstantiationError -&gt; String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var hs-var hs-var hs-var">displayError</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationErrorCole"><span class="hs-identifier hs-type">BccProtocolInstantiationErrorCole</span></a></span><span> </span><span id="local-6989586621679425164"><span class="annot"><span class="annottext">ColeProtocolInstantiationError
+</span><a href="#local-6989586621679425164"><span class="hs-identifier hs-var">err</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-283"></span><span>    </span><span class="annot"><span class="annottext">ColeProtocolInstantiationError -&gt; String
+forall e. Error e =&gt; e -&gt; String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="annot"><span class="annottext">ColeProtocolInstantiationError
+</span><a href="#local-6989586621679425164"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-284"></span><span>  </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationSophieGenesisReadError"><span class="hs-identifier hs-type">BccProtocolInstantiationSophieGenesisReadError</span></a></span><span> </span><span id="local-6989586621679425163"><span class="annot"><span class="annottext">GenesisReadError
+</span><a href="#local-6989586621679425163"><span class="hs-identifier hs-var">err</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-285"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Sophie related: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisReadError -&gt; String
+forall e. Error e =&gt; e -&gt; String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisReadError
+</span><a href="#local-6989586621679425163"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-286"></span><span>  </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationAurumGenesisReadError"><span class="hs-identifier hs-type">BccProtocolInstantiationAurumGenesisReadError</span></a></span><span> </span><span id="local-6989586621679425162"><span class="annot"><span class="annottext">GenesisReadError
+</span><a href="#local-6989586621679425162"><span class="hs-identifier hs-var">err</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-287"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Aurum related: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisReadError -&gt; String
+forall e. Error e =&gt; e -&gt; String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisReadError
+</span><a href="#local-6989586621679425162"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-288"></span><span>  </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationOptimumLeaderCredentialsError"><span class="hs-identifier hs-type">BccProtocolInstantiationOptimumLeaderCredentialsError</span></a></span><span> </span><span id="local-6989586621679425161"><span class="annot"><span class="annottext">OptimumLeaderCredentialsError
+</span><a href="#local-6989586621679425161"><span class="hs-identifier hs-var">err</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-289"></span><span>    </span><span class="annot"><span class="annottext">OptimumLeaderCredentialsError -&gt; String
+forall e. Error e =&gt; e -&gt; String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="annot"><span class="annottext">OptimumLeaderCredentialsError
+</span><a href="#local-6989586621679425161"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-290"></span><span>  </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Node.Protocol.Bcc.html#BccProtocolInstantiationErrorAurum"><span class="hs-identifier hs-type">BccProtocolInstantiationErrorAurum</span></a></span><span> </span><span id="local-6989586621679425160"><span class="annot"><span class="annottext">AurumProtocolInstantiationError
+</span><a href="#local-6989586621679425160"><span class="hs-identifier hs-var">err</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-291"></span><span>    </span><span class="annot"><span class="annottext">AurumProtocolInstantiationError -&gt; String
+forall e. Error e =&gt; e -&gt; String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">displayError</span></a></span><span> </span><span class="annot"><span class="annottext">AurumProtocolInstantiationError
+</span><a href="#local-6989586621679425160"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-292"></span></pre></body></html>

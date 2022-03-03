@@ -1,0 +1,132 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE FlexibleContexts #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE RankNTypes #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Bcc.CLI.Cole.Query</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#ColeQueryError"><span class="hs-identifier">ColeQueryError</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#renderColeQueryError"><span class="hs-identifier">renderColeQueryError</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#runGetLocalNodeTip"><span class="hs-identifier">runGetLocalNodeTip</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Bcc.Prelude</span></span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except.Extra</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">firstExceptT</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Aeson.Encode.Pretty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">encodePretty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/bytestring-0.10.12.0/src"><span class="hs-identifier">Data.ByteString.Lazy</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LB</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier">Data.Text.Encoding</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">Bcc.Api</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Environment.html"><span class="hs-identifier">Bcc.CLI.Environment</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Environment.html#EnvSocketError"><span class="hs-identifier">EnvSocketError</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Environment.html#readEnvSocketPath"><span class="hs-identifier">readEnvSocketPath</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Environment.html#renderEnvSocketError"><span class="hs-identifier">renderEnvSocketError</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Types.html"><span class="hs-identifier">Bcc.CLI.Types</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Types.html#SocketPath"><span class="hs-identifier">SocketPath</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">{- HLINT ignore &quot;Reduce duplication&quot; -}</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">newtype</span><span> </span><span id="ColeQueryError"><span class="annot"><a href="Bcc.CLI.Cole.Query.html#ColeQueryError"><span class="hs-identifier hs-var">ColeQueryError</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="ColeQueryEnvVarSocketErr"><span class="annot"><a href="Bcc.CLI.Cole.Query.html#ColeQueryEnvVarSocketErr"><span class="hs-identifier hs-var">ColeQueryEnvVarSocketErr</span></a></span></span><span> </span><span class="annot"><a href="Bcc.CLI.Environment.html#EnvSocketError"><span class="hs-identifier hs-type">EnvSocketError</span></a></span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679346193"><span id="local-6989586621679346195"><span id="local-6989586621679346197"><span class="annot"><span class="annottext">Int -&gt; ColeQueryError -&gt; ShowS
+[ColeQueryError] -&gt; ShowS
+ColeQueryError -&gt; String
+(Int -&gt; ColeQueryError -&gt; ShowS)
+-&gt; (ColeQueryError -&gt; String)
+-&gt; ([ColeQueryError] -&gt; ShowS)
+-&gt; Show ColeQueryError
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [ColeQueryError] -&gt; ShowS
+$cshowList :: [ColeQueryError] -&gt; ShowS
+show :: ColeQueryError -&gt; String
+$cshow :: ColeQueryError -&gt; String
+showsPrec :: Int -&gt; ColeQueryError -&gt; ShowS
+$cshowsPrec :: Int -&gt; ColeQueryError -&gt; ShowS
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#renderColeQueryError"><span class="hs-identifier hs-type">renderColeQueryError</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#ColeQueryError"><span class="hs-identifier hs-type">ColeQueryError</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-type">Text</span></a></span><span>
+</span><span id="line-29"></span><span id="renderColeQueryError"><span class="annot"><span class="annottext">renderColeQueryError :: ColeQueryError -&gt; Text
+</span><a href="Bcc.CLI.Cole.Query.html#renderColeQueryError"><span class="hs-identifier hs-var hs-var">renderColeQueryError</span></a></span></span><span> </span><span id="local-6989586621679346191"><span class="annot"><span class="annottext">ColeQueryError
+</span><a href="#local-6989586621679346191"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ColeQueryError
+</span><a href="#local-6989586621679346191"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#ColeQueryEnvVarSocketErr"><span class="hs-identifier hs-type">ColeQueryEnvVarSocketErr</span></a></span><span> </span><span id="local-6989586621679346190"><span class="annot"><span class="annottext">EnvSocketError
+</span><a href="#local-6989586621679346190"><span class="hs-identifier hs-var">sockEnvErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">EnvSocketError -&gt; Text
+</span><a href="Bcc.CLI.Environment.html#renderEnvSocketError"><span class="hs-identifier hs-var">renderEnvSocketError</span></a></span><span> </span><span class="annot"><span class="annottext">EnvSocketError
+</span><a href="#local-6989586621679346190"><span class="hs-identifier hs-var">sockEnvErr</span></a></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- Query local node's chain tip</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#runGetLocalNodeTip"><span class="hs-identifier hs-type">runGetLocalNodeTip</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">NetworkId</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier hs-type">ExceptT</span></a></span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Query.html#ColeQueryError"><span class="hs-identifier hs-type">ColeQueryError</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">IO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span id="runGetLocalNodeTip"><span class="annot"><span class="annottext">runGetLocalNodeTip :: NetworkId -&gt; ExceptT ColeQueryError IO ()
+</span><a href="Bcc.CLI.Cole.Query.html#runGetLocalNodeTip"><span class="hs-identifier hs-var hs-var">runGetLocalNodeTip</span></a></span></span><span> </span><span id="local-6989586621679346189"><span class="annot"><span class="annottext">NetworkId
+</span><a href="#local-6989586621679346189"><span class="hs-identifier hs-var">networkId</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-39"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Types.html#SocketPath"><span class="hs-identifier hs-type">SocketPath</span></a></span><span> </span><span id="local-6989586621679346187"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679346187"><span class="hs-identifier hs-var">sockPath</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(EnvSocketError -&gt; ColeQueryError)
+-&gt; ExceptT EnvSocketError IO SocketPath
+-&gt; ExceptT ColeQueryError IO SocketPath
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">EnvSocketError -&gt; ColeQueryError
+</span><a href="Bcc.CLI.Cole.Query.html#ColeQueryEnvVarSocketErr"><span class="hs-identifier hs-var">ColeQueryEnvVarSocketErr</span></a></span><span>
+</span><span id="line-40"></span><span>                           </span><span class="annot"><span class="annottext">ExceptT EnvSocketError IO SocketPath
+</span><a href="Bcc.CLI.Environment.html#readEnvSocketPath"><span class="hs-identifier hs-var">readEnvSocketPath</span></a></span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679346186"><span class="annot"><span class="annottext">connctInfo :: LocalNodeConnectInfo ColeMode
+</span><a href="#local-6989586621679346186"><span class="hs-identifier hs-var hs-var">connctInfo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-42"></span><span>          </span><span class="annot"><span class="annottext">LocalNodeConnectInfo :: forall mode.
+ConsensusModeParams mode
+-&gt; NetworkId -&gt; String -&gt; LocalNodeConnectInfo mode
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">LocalNodeConnectInfo</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-43"></span><span>            </span><span class="annot"><span class="annottext">localNodeSocketPath :: String
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">localNodeSocketPath</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679346187"><span class="hs-identifier hs-var">sockPath</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-44"></span><span>            </span><span class="annot"><span class="annottext">localNodeNetworkId :: NetworkId
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">localNodeNetworkId</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NetworkId
+</span><a href="#local-6989586621679346189"><span class="hs-identifier hs-var">networkId</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-45"></span><span>            </span><span class="annot"><span class="annottext">localConsensusModeParams :: ConsensusModeParams ColeMode
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">localConsensusModeParams</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">EpochSlots -&gt; ConsensusModeParams ColeMode
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">ColeModeParams</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word64 -&gt; EpochSlots
+</span><span class="hs-identifier hs-var">EpochSlots</span></span><span> </span><span class="annot"><span class="annottext">Word64
+</span><span class="hs-number">21600</span></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>          </span><span class="hs-special">}</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span>    </span><span id="local-6989586621679346179"><span class="annot"><span class="annottext">ChainTip
+</span><a href="#local-6989586621679346179"><span class="hs-identifier hs-var">tip</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO ChainTip -&gt; ExceptT ColeQueryError IO ChainTip
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">liftIO</span></a></span><span> </span><span class="annot"><span class="annottext">(IO ChainTip -&gt; ExceptT ColeQueryError IO ChainTip)
+-&gt; IO ChainTip -&gt; ExceptT ColeQueryError IO ChainTip
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">LocalNodeConnectInfo ColeMode -&gt; IO ChainTip
+forall mode. LocalNodeConnectInfo mode -&gt; IO ChainTip
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">getLocalChainTip</span></a></span><span> </span><span class="annot"><span class="annottext">LocalNodeConnectInfo ColeMode
+</span><a href="#local-6989586621679346186"><span class="hs-identifier hs-var">connctInfo</span></a></span><span>
+</span><span id="line-49"></span><span>    </span><span class="annot"><span class="annottext">IO () -&gt; ExceptT ColeQueryError IO ()
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">liftIO</span></a></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; ExceptT ColeQueryError IO ())
+-&gt; (ByteString -&gt; IO ())
+-&gt; ByteString
+-&gt; ExceptT ColeQueryError IO ()
+forall k (cat :: k -&gt; k -&gt; *) (b :: k) (c :: k) (a :: k).
+Category cat =&gt;
+cat b c -&gt; cat a b -&gt; cat a c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; IO ()
+</span><span class="hs-identifier hs-var">putTextLn</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; IO ()) -&gt; (ByteString -&gt; Text) -&gt; ByteString -&gt; IO ()
+forall k (cat :: k -&gt; k -&gt; *) (b :: k) (c :: k) (a :: k).
+Category cat =&gt;
+cat b c -&gt; cat a b -&gt; cat a c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Text
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-var">Text.decodeUtf8</span></a></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; Text)
+-&gt; (ByteString -&gt; ByteString) -&gt; ByteString -&gt; Text
+forall k (cat :: k -&gt; k -&gt; *) (b :: k) (c :: k) (a :: k).
+Category cat =&gt;
+cat b c -&gt; cat a b -&gt; cat a c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; ByteString
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/bytestring-0.10.12.0/src"><span class="hs-identifier hs-var">LB.toStrict</span></a></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; ExceptT ColeQueryError IO ())
+-&gt; ByteString -&gt; ExceptT ColeQueryError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">ChainTip -&gt; ByteString
+forall a. ToJSON a =&gt; a -&gt; ByteString
+</span><span class="hs-identifier hs-var">encodePretty</span></span><span> </span><span class="annot"><span class="annottext">ChainTip
+</span><a href="#local-6989586621679346179"><span class="hs-identifier hs-var">tip</span></a></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span></pre></body></html>

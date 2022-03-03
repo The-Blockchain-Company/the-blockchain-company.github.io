@@ -1,0 +1,344 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Bcc.CLI.Sophie.Run</span><span>
+</span><span id="line-2"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieClientCmdError"><span class="hs-identifier">SophieClientCmdError</span></a></span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#renderSophieClientCmdError"><span class="hs-identifier">renderSophieClientCmdError</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier">runSophieClientCommand</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Bcc.Prelude</span></span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except.Extra</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">firstExceptT</span></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Parsers.html"><span class="hs-identifier">Bcc.CLI.Sophie.Parsers</span></a></span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Address.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Address</span></a></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Governance.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Governance</span></a></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Key.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Key</span></a></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Node.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Node</span></a></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Pool.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Pool</span></a></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Query.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Query</span></a></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.StakeAddress.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.StakeAddress</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Transaction.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Transaction</span></a></span><span>
+</span><span id="line-21"></span><span>                                         </span><span class="hs-comment">-- Block, System, DevOps</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Genesis.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.Genesis</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.TextView.html"><span class="hs-identifier">Bcc.CLI.Sophie.Run.TextView</span></a></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">data</span><span> </span><span id="SophieClientCmdError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieClientCmdError"><span class="hs-identifier hs-var">SophieClientCmdError</span></a></span></span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="SophieCmdAddressError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdAddressError"><span class="hs-identifier hs-var">SophieCmdAddressError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Address.html#SophieAddressCmdError"><span class="hs-identifier hs-type">SophieAddressCmdError</span></a></span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdGenesisError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdGenesisError"><span class="hs-identifier hs-var">SophieCmdGenesisError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Genesis.html#SophieGenesisCmdError"><span class="hs-identifier hs-type">SophieGenesisCmdError</span></a></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdGovernanceError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdGovernanceError"><span class="hs-identifier hs-var">SophieCmdGovernanceError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Governance.html#SophieGovernanceCmdError"><span class="hs-identifier hs-type">SophieGovernanceCmdError</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdNodeError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdNodeError"><span class="hs-identifier hs-var">SophieCmdNodeError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Node.html#SophieNodeCmdError"><span class="hs-identifier hs-type">SophieNodeCmdError</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdPoolError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdPoolError"><span class="hs-identifier hs-var">SophieCmdPoolError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Pool.html#SophiePoolCmdError"><span class="hs-identifier hs-type">SophiePoolCmdError</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdStakeAddressError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdStakeAddressError"><span class="hs-identifier hs-var">SophieCmdStakeAddressError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.StakeAddress.html#SophieStakeAddressCmdError"><span class="hs-identifier hs-type">SophieStakeAddressCmdError</span></a></span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdTextViewError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdTextViewError"><span class="hs-identifier hs-var">SophieCmdTextViewError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.TextView.html#SophieTextViewFileError"><span class="hs-identifier hs-type">SophieTextViewFileError</span></a></span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdTransactionError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdTransactionError"><span class="hs-identifier hs-var">SophieCmdTransactionError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Transaction.html#SophieTxCmdError"><span class="hs-identifier hs-type">SophieTxCmdError</span></a></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdQueryError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdQueryError"><span class="hs-identifier hs-var">SophieCmdQueryError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Query.html#SophieQueryCmdError"><span class="hs-identifier hs-type">SophieQueryCmdError</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="SophieCmdKeyError"><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdKeyError"><span class="hs-identifier hs-var">SophieCmdKeyError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Sophie.Run.Key.html#SophieKeyCmdError"><span class="hs-identifier hs-type">SophieKeyCmdError</span></a></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679347138"><span id="local-6989586621679347140"><span id="local-6989586621679347142"><span class="annot"><span class="annottext">Int -&gt; SophieClientCmdError -&gt; ShowS
+[SophieClientCmdError] -&gt; ShowS
+SophieClientCmdError -&gt; String
+(Int -&gt; SophieClientCmdError -&gt; ShowS)
+-&gt; (SophieClientCmdError -&gt; String)
+-&gt; ([SophieClientCmdError] -&gt; ShowS)
+-&gt; Show SophieClientCmdError
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [SophieClientCmdError] -&gt; ShowS
+$cshowList :: [SophieClientCmdError] -&gt; ShowS
+show :: SophieClientCmdError -&gt; String
+$cshow :: SophieClientCmdError -&gt; String
+showsPrec :: Int -&gt; SophieClientCmdError -&gt; ShowS
+$cshowsPrec :: Int -&gt; SophieClientCmdError -&gt; ShowS
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#renderSophieClientCmdError"><span class="hs-identifier hs-type">renderSophieClientCmdError</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#SophieCommand"><span class="hs-identifier hs-type">SophieCommand</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieClientCmdError"><span class="hs-identifier hs-type">SophieClientCmdError</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-type">Text</span></a></span><span>
+</span><span id="line-39"></span><span id="renderSophieClientCmdError"><span class="annot"><span class="annottext">renderSophieClientCmdError :: SophieCommand -&gt; SophieClientCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.html#renderSophieClientCmdError"><span class="hs-identifier hs-var hs-var">renderSophieClientCmdError</span></a></span></span><span> </span><span id="local-6989586621679347136"><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span></span><span> </span><span id="local-6989586621679347135"><span class="annot"><span class="annottext">SophieClientCmdError
+</span><a href="#local-6989586621679347135"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">SophieClientCmdError
+</span><a href="#local-6989586621679347135"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-41"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdAddressError"><span class="hs-identifier hs-type">SophieCmdAddressError</span></a></span><span> </span><span id="local-6989586621679347134"><span class="annot"><span class="annottext">SophieAddressCmdError
+</span><a href="#local-6989586621679347134"><span class="hs-identifier hs-var">addrCmdErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-42"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieAddressCmdError -&gt; Text) -&gt; SophieAddressCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieAddressCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Address.html#renderSophieAddressCmdError"><span class="hs-identifier hs-var">renderSophieAddressCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieAddressCmdError
+</span><a href="#local-6989586621679347134"><span class="hs-identifier hs-var">addrCmdErr</span></a></span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdGenesisError"><span class="hs-identifier hs-type">SophieCmdGenesisError</span></a></span><span> </span><span id="local-6989586621679347131"><span class="annot"><span class="annottext">SophieGenesisCmdError
+</span><a href="#local-6989586621679347131"><span class="hs-identifier hs-var">genesisCmdErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-44"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieGenesisCmdError -&gt; Text) -&gt; SophieGenesisCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieGenesisCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Genesis.html#renderSophieGenesisCmdError"><span class="hs-identifier hs-var">renderSophieGenesisCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieGenesisCmdError
+</span><a href="#local-6989586621679347131"><span class="hs-identifier hs-var">genesisCmdErr</span></a></span><span>
+</span><span id="line-45"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdGovernanceError"><span class="hs-identifier hs-type">SophieCmdGovernanceError</span></a></span><span> </span><span id="local-6989586621679347129"><span class="annot"><span class="annottext">SophieGovernanceCmdError
+</span><a href="#local-6989586621679347129"><span class="hs-identifier hs-var">govCmdErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-46"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieGovernanceCmdError -&gt; Text)
+-&gt; SophieGovernanceCmdError
+-&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieGovernanceCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Governance.html#renderSophieGovernanceError"><span class="hs-identifier hs-var">renderSophieGovernanceError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieGovernanceCmdError
+</span><a href="#local-6989586621679347129"><span class="hs-identifier hs-var">govCmdErr</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdNodeError"><span class="hs-identifier hs-type">SophieCmdNodeError</span></a></span><span> </span><span id="local-6989586621679347127"><span class="annot"><span class="annottext">SophieNodeCmdError
+</span><a href="#local-6989586621679347127"><span class="hs-identifier hs-var">nodeCmdErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-48"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieNodeCmdError -&gt; Text) -&gt; SophieNodeCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieNodeCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Node.html#renderSophieNodeCmdError"><span class="hs-identifier hs-var">renderSophieNodeCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieNodeCmdError
+</span><a href="#local-6989586621679347127"><span class="hs-identifier hs-var">nodeCmdErr</span></a></span><span>
+</span><span id="line-49"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdPoolError"><span class="hs-identifier hs-type">SophieCmdPoolError</span></a></span><span> </span><span id="local-6989586621679347125"><span class="annot"><span class="annottext">SophiePoolCmdError
+</span><a href="#local-6989586621679347125"><span class="hs-identifier hs-var">poolCmdErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-50"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophiePoolCmdError -&gt; Text) -&gt; SophiePoolCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophiePoolCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Pool.html#renderSophiePoolCmdError"><span class="hs-identifier hs-var">renderSophiePoolCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophiePoolCmdError
+</span><a href="#local-6989586621679347125"><span class="hs-identifier hs-var">poolCmdErr</span></a></span><span>
+</span><span id="line-51"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdStakeAddressError"><span class="hs-identifier hs-type">SophieCmdStakeAddressError</span></a></span><span> </span><span id="local-6989586621679347123"><span class="annot"><span class="annottext">SophieStakeAddressCmdError
+</span><a href="#local-6989586621679347123"><span class="hs-identifier hs-var">stakeAddrCmdErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-52"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieStakeAddressCmdError -&gt; Text)
+-&gt; SophieStakeAddressCmdError
+-&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieStakeAddressCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.StakeAddress.html#renderSophieStakeAddressCmdError"><span class="hs-identifier hs-var">renderSophieStakeAddressCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieStakeAddressCmdError
+</span><a href="#local-6989586621679347123"><span class="hs-identifier hs-var">stakeAddrCmdErr</span></a></span><span>
+</span><span id="line-53"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdTextViewError"><span class="hs-identifier hs-type">SophieCmdTextViewError</span></a></span><span> </span><span id="local-6989586621679347121"><span class="annot"><span class="annottext">SophieTextViewFileError
+</span><a href="#local-6989586621679347121"><span class="hs-identifier hs-var">txtViewErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-54"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieTextViewFileError -&gt; Text)
+-&gt; SophieTextViewFileError
+-&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieTextViewFileError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.TextView.html#renderSophieTextViewFileError"><span class="hs-identifier hs-var">renderSophieTextViewFileError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieTextViewFileError
+</span><a href="#local-6989586621679347121"><span class="hs-identifier hs-var">txtViewErr</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdTransactionError"><span class="hs-identifier hs-type">SophieCmdTransactionError</span></a></span><span> </span><span id="local-6989586621679347119"><span class="annot"><span class="annottext">SophieTxCmdError
+</span><a href="#local-6989586621679347119"><span class="hs-identifier hs-var">txErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-56"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieTxCmdError -&gt; Text) -&gt; SophieTxCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieTxCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Transaction.html#renderSophieTxCmdError"><span class="hs-identifier hs-var">renderSophieTxCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieTxCmdError
+</span><a href="#local-6989586621679347119"><span class="hs-identifier hs-var">txErr</span></a></span><span>
+</span><span id="line-57"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdQueryError"><span class="hs-identifier hs-type">SophieCmdQueryError</span></a></span><span> </span><span id="local-6989586621679347117"><span class="annot"><span class="annottext">SophieQueryCmdError
+</span><a href="#local-6989586621679347117"><span class="hs-identifier hs-var">queryErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-58"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieQueryCmdError -&gt; Text) -&gt; SophieQueryCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieQueryCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Query.html#renderSophieQueryCmdError"><span class="hs-identifier hs-var">renderSophieQueryCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieQueryCmdError
+</span><a href="#local-6989586621679347117"><span class="hs-identifier hs-var">queryErr</span></a></span><span>
+</span><span id="line-59"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieCmdKeyError"><span class="hs-identifier hs-type">SophieCmdKeyError</span></a></span><span> </span><span id="local-6989586621679347115"><span class="annot"><span class="annottext">SophieKeyCmdError
+</span><a href="#local-6989586621679347115"><span class="hs-identifier hs-var">keyErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-60"></span><span>       </span><span class="annot"><span class="annottext">SophieCommand
+-&gt; (SophieKeyCmdError -&gt; Text) -&gt; SophieKeyCmdError -&gt; Text
+forall a. SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var">renderError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347136"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">SophieKeyCmdError -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Run.Key.html#renderSophieKeyCmdError"><span class="hs-identifier hs-var">renderSophieKeyCmdError</span></a></span><span> </span><span class="annot"><span class="annottext">SophieKeyCmdError
+</span><a href="#local-6989586621679347115"><span class="hs-identifier hs-var">keyErr</span></a></span><span>
+</span><span id="line-61"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-62"></span><span>   </span><span id="local-6989586621679347186"><span class="annot"><a href="#local-6989586621679347133"><span class="hs-identifier hs-type">renderError</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#SophieCommand"><span class="hs-identifier hs-type">SophieCommand</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679347186"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-type">Text</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679347186"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-type">Text</span></a></span></span><span>
+</span><span id="line-63"></span><span>   </span><span id="local-6989586621679347133"><span class="annot"><span class="annottext">renderError :: SophieCommand -&gt; (a -&gt; Text) -&gt; a -&gt; Text
+</span><a href="#local-6989586621679347133"><span class="hs-identifier hs-var hs-var">renderError</span></a></span></span><span> </span><span id="local-6989586621679347113"><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347113"><span class="hs-identifier hs-var">sophieCmd</span></a></span></span><span> </span><span id="local-6989586621679347112"><span class="annot"><span class="annottext">a -&gt; Text
+</span><a href="#local-6989586621679347112"><span class="hs-identifier hs-var">renderer</span></a></span></span><span> </span><span id="local-6989586621679347111"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679347111"><span class="hs-identifier hs-var">shelCliCmdErr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-64"></span><span>      </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">mconcat</span></a></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Command failed: &quot;</span></span><span>
+</span><span id="line-65"></span><span>              </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">SophieCommand -&gt; Text
+</span><a href="Bcc.CLI.Sophie.Commands.html#renderSophieCommand"><span class="hs-identifier hs-var">renderSophieCommand</span></a></span><span> </span><span class="annot"><span class="annottext">SophieCommand
+</span><a href="#local-6989586621679347113"><span class="hs-identifier hs-var">sophieCmd</span></a></span><span>
+</span><span id="line-66"></span><span>              </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;  Error: &quot;</span></span><span>
+</span><span id="line-67"></span><span>              </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">a -&gt; Text
+</span><a href="#local-6989586621679347112"><span class="hs-identifier hs-var">renderer</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679347111"><span class="hs-identifier hs-var">shelCliCmdErr</span></a></span><span>
+</span><span id="line-68"></span><span>              </span><span class="hs-special">]</span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-comment">--</span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- CLI sophie command dispatch</span><span>
+</span><span id="line-73"></span><span class="hs-comment">--</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-type">runSophieClientCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#SophieCommand"><span class="hs-identifier hs-type">SophieCommand</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier hs-type">ExceptT</span></a></span><span> </span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#SophieClientCmdError"><span class="hs-identifier hs-type">SophieClientCmdError</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">IO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span id="runSophieClientCommand"><span class="annot"><span class="annottext">runSophieClientCommand :: SophieCommand -&gt; ExceptT SophieClientCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var hs-var">runSophieClientCommand</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#AddressCmd"><span class="hs-identifier hs-type">AddressCmd</span></a></span><span>      </span><span id="local-6989586621679347108"><span class="annot"><span class="annottext">AddressCmd
+</span><a href="#local-6989586621679347108"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieAddressCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieAddressCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieAddressCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdAddressError"><span class="hs-identifier hs-var">SophieCmdAddressError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieAddressCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieAddressCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">AddressCmd -&gt; ExceptT SophieAddressCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Address.html#runAddressCmd"><span class="hs-identifier hs-var">runAddressCmd</span></a></span><span> </span><span class="annot"><span class="annottext">AddressCmd
+</span><a href="#local-6989586621679347108"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#StakeAddressCmd"><span class="hs-identifier hs-type">StakeAddressCmd</span></a></span><span> </span><span id="local-6989586621679347105"><span class="annot"><span class="annottext">StakeAddressCmd
+</span><a href="#local-6989586621679347105"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieStakeAddressCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieStakeAddressCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieStakeAddressCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdStakeAddressError"><span class="hs-identifier hs-var">SophieCmdStakeAddressError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieStakeAddressCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieStakeAddressCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">StakeAddressCmd -&gt; ExceptT SophieStakeAddressCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.StakeAddress.html#runStakeAddressCmd"><span class="hs-identifier hs-var">runStakeAddressCmd</span></a></span><span> </span><span class="annot"><span class="annottext">StakeAddressCmd
+</span><a href="#local-6989586621679347105"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#KeyCmd"><span class="hs-identifier hs-type">KeyCmd</span></a></span><span>          </span><span id="local-6989586621679347102"><span class="annot"><span class="annottext">KeyCmd
+</span><a href="#local-6989586621679347102"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieKeyCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieKeyCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieKeyCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdKeyError"><span class="hs-identifier hs-var">SophieCmdKeyError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieKeyCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieKeyCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">KeyCmd -&gt; ExceptT SophieKeyCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Key.html#runKeyCmd"><span class="hs-identifier hs-var">runKeyCmd</span></a></span><span> </span><span class="annot"><span class="annottext">KeyCmd
+</span><a href="#local-6989586621679347102"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#TransactionCmd"><span class="hs-identifier hs-type">TransactionCmd</span></a></span><span>  </span><span id="local-6989586621679347099"><span class="annot"><span class="annottext">TransactionCmd
+</span><a href="#local-6989586621679347099"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieTxCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieTxCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieTxCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdTransactionError"><span class="hs-identifier hs-var">SophieCmdTransactionError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieTxCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieTxCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">TransactionCmd -&gt; ExceptT SophieTxCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Transaction.html#runTransactionCmd"><span class="hs-identifier hs-var">runTransactionCmd</span></a></span><span>  </span><span class="annot"><span class="annottext">TransactionCmd
+</span><a href="#local-6989586621679347099"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-80"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#NodeCmd"><span class="hs-identifier hs-type">NodeCmd</span></a></span><span>         </span><span id="local-6989586621679347096"><span class="annot"><span class="annottext">NodeCmd
+</span><a href="#local-6989586621679347096"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieNodeCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieNodeCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieNodeCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdNodeError"><span class="hs-identifier hs-var">SophieCmdNodeError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieNodeCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieNodeCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">NodeCmd -&gt; ExceptT SophieNodeCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Node.html#runNodeCmd"><span class="hs-identifier hs-var">runNodeCmd</span></a></span><span> </span><span class="annot"><span class="annottext">NodeCmd
+</span><a href="#local-6989586621679347096"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#PoolCmd"><span class="hs-identifier hs-type">PoolCmd</span></a></span><span>         </span><span id="local-6989586621679347093"><span class="annot"><span class="annottext">PoolCmd
+</span><a href="#local-6989586621679347093"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophiePoolCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophiePoolCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophiePoolCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdPoolError"><span class="hs-identifier hs-var">SophieCmdPoolError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophiePoolCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophiePoolCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">PoolCmd -&gt; ExceptT SophiePoolCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Pool.html#runPoolCmd"><span class="hs-identifier hs-var">runPoolCmd</span></a></span><span> </span><span class="annot"><span class="annottext">PoolCmd
+</span><a href="#local-6989586621679347093"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-82"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#QueryCmd"><span class="hs-identifier hs-type">QueryCmd</span></a></span><span>        </span><span id="local-6989586621679347090"><span class="annot"><span class="annottext">QueryCmd
+</span><a href="#local-6989586621679347090"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieQueryCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieQueryCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieQueryCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdQueryError"><span class="hs-identifier hs-var">SophieCmdQueryError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieQueryCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieQueryCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">QueryCmd -&gt; ExceptT SophieQueryCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Query.html#runQueryCmd"><span class="hs-identifier hs-var">runQueryCmd</span></a></span><span> </span><span class="annot"><span class="annottext">QueryCmd
+</span><a href="#local-6989586621679347090"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-83"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#GovernanceCmd"><span class="hs-identifier hs-type">GovernanceCmd</span></a></span><span>   </span><span id="local-6989586621679347087"><span class="annot"><span class="annottext">GovernanceCmd
+</span><a href="#local-6989586621679347087"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieGovernanceCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieGovernanceCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieGovernanceCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdGovernanceError"><span class="hs-identifier hs-var">SophieCmdGovernanceError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieGovernanceCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieGovernanceCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">GovernanceCmd -&gt; ExceptT SophieGovernanceCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Governance.html#runGovernanceCmd"><span class="hs-identifier hs-var">runGovernanceCmd</span></a></span><span> </span><span class="annot"><span class="annottext">GovernanceCmd
+</span><a href="#local-6989586621679347087"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#GenesisCmd"><span class="hs-identifier hs-type">GenesisCmd</span></a></span><span>      </span><span id="local-6989586621679347084"><span class="annot"><span class="annottext">GenesisCmd
+</span><a href="#local-6989586621679347084"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieGenesisCmdError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieGenesisCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieGenesisCmdError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdGenesisError"><span class="hs-identifier hs-var">SophieCmdGenesisError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieGenesisCmdError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieGenesisCmdError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisCmd -&gt; ExceptT SophieGenesisCmdError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.Genesis.html#runGenesisCmd"><span class="hs-identifier hs-var">runGenesisCmd</span></a></span><span> </span><span class="annot"><span class="annottext">GenesisCmd
+</span><a href="#local-6989586621679347084"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-85"></span><span class="annot"><a href="Bcc.CLI.Sophie.Run.html#runSophieClientCommand"><span class="hs-identifier hs-var">runSophieClientCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#TextViewCmd"><span class="hs-identifier hs-type">TextViewCmd</span></a></span><span>     </span><span id="local-6989586621679347081"><span class="annot"><span class="annottext">TextViewCmd
+</span><a href="#local-6989586621679347081"><span class="hs-identifier hs-var">cmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SophieTextViewFileError -&gt; SophieClientCmdError)
+-&gt; ExceptT SophieTextViewFileError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">SophieTextViewFileError -&gt; SophieClientCmdError
+</span><a href="Bcc.CLI.Sophie.Run.html#SophieCmdTextViewError"><span class="hs-identifier hs-var">SophieCmdTextViewError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT SophieTextViewFileError IO ()
+ -&gt; ExceptT SophieClientCmdError IO ())
+-&gt; ExceptT SophieTextViewFileError IO ()
+-&gt; ExceptT SophieClientCmdError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">TextViewCmd -&gt; ExceptT SophieTextViewFileError IO ()
+</span><a href="Bcc.CLI.Sophie.Run.TextView.html#runTextViewCmd"><span class="hs-identifier hs-var">runTextViewCmd</span></a></span><span> </span><span class="annot"><span class="annottext">TextViewCmd
+</span><a href="#local-6989586621679347081"><span class="hs-identifier hs-var">cmd</span></a></span><span>
+</span><span id="line-86"></span></pre></body></html>

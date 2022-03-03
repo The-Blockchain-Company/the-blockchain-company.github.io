@@ -1,0 +1,355 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Bcc.CLI.Cole.UpdateProposal</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalError"><span class="hs-identifier">ColeUpdateProposalError</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#runProposalCreation"><span class="hs-identifier">runProposalCreation</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#readColeUpdateProposal"><span class="hs-identifier">readColeUpdateProposal</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#renderColeUpdateProposalError"><span class="hs-identifier">renderColeUpdateProposalError</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#submitColeUpdateProposal"><span class="hs-identifier">submitColeUpdateProposal</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Bcc.Prelude</span></span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except.Extra</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">firstExceptT</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">handleIOExceptT</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hoistEither</span></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Tracer</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">stdoutTracer</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">traceWith</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/bytestring-0.10.12.0/src"><span class="hs-identifier">Data.ByteString</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">BS</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Bcc.Chain.Update</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">InstallerHash</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ProtocolVersion</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>                     </span><span class="annot"><span class="hs-identifier">SoftwareVersion</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">SystemTag</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Ledger.SupportsMempool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">txId</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Util.Condense</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">condense</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">Bcc.Api</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">NetworkId</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">SerialiseAsRawBytes</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">Bcc.Api.Cole</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">AsType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">AsColeUpdateProposal</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">ColeProtocolParametersUpdate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-25"></span><span>                     </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">ColeUpdateProposal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">makeColeUpdateProposal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier">toColeLedgerUpdateProposal</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Cole.Genesis.html"><span class="hs-identifier">Bcc.CLI.Cole.Genesis</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Cole.Genesis.html#ColeGenesisError"><span class="hs-identifier">ColeGenesisError</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Cole.Key.html"><span class="hs-identifier">Bcc.CLI.Cole.Key</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Cole.Key.html#ColeKeyFailure"><span class="hs-identifier">ColeKeyFailure</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Key.html#readColeSigningKey"><span class="hs-identifier">readColeSigningKey</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Cole.Tx.html"><span class="hs-identifier">Bcc.CLI.Cole.Tx</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Cole.Tx.html#ColeTxError"><span class="hs-identifier">ColeTxError</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.Tx.html#nodeSubmitTx"><span class="hs-identifier">nodeSubmitTx</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Helpers.html"><span class="hs-identifier">Bcc.CLI.Helpers</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Helpers.html#HelpersError"><span class="hs-identifier">HelpersError</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Helpers.html#ensureNewFileLBS"><span class="hs-identifier">ensureNewFileLBS</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Helpers.html#renderHelpersError"><span class="hs-identifier">renderHelpersError</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier">textShow</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html"><span class="hs-identifier">Bcc.CLI.Sophie.Commands</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Sophie.Commands.html#ColeKeyFormat"><span class="hs-identifier">ColeKeyFormat</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Bcc.CLI.Types.html"><span class="hs-identifier">Bcc.CLI.Types</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">data</span><span> </span><span id="ColeUpdateProposalError"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalError"><span class="hs-identifier hs-var">ColeUpdateProposalError</span></a></span></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="ColeReadUpdateProposalFileFailure"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeReadUpdateProposalFileFailure"><span class="hs-identifier hs-var">ColeReadUpdateProposalFileFailure</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-type">Text</span></a></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="ColeUpdateProposalWriteError"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalWriteError"><span class="hs-identifier hs-var">ColeUpdateProposalWriteError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Helpers.html#HelpersError"><span class="hs-identifier hs-type">HelpersError</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="ColeUpdateProposalGenesisReadError"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalGenesisReadError"><span class="hs-identifier hs-var">ColeUpdateProposalGenesisReadError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Cole.Genesis.html#ColeGenesisError"><span class="hs-identifier hs-type">ColeGenesisError</span></a></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="ColeUpdateProposalTxError"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalTxError"><span class="hs-identifier hs-var">ColeUpdateProposalTxError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Cole.Tx.html#ColeTxError"><span class="hs-identifier hs-type">ColeTxError</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="ReadSigningKeyFailure"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ReadSigningKeyFailure"><span class="hs-identifier hs-var">ReadSigningKeyFailure</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Bcc.CLI.Cole.Key.html#ColeKeyFailure"><span class="hs-identifier hs-type">ColeKeyFailure</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="UpdateProposalDecodingError"><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#UpdateProposalDecodingError"><span class="hs-identifier hs-var">UpdateProposalDecodingError</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679348115"><span id="local-6989586621679348117"><span id="local-6989586621679348119"><span class="annot"><span class="annottext">Int -&gt; ColeUpdateProposalError -&gt; ShowS
+[ColeUpdateProposalError] -&gt; ShowS
+ColeUpdateProposalError -&gt; String
+(Int -&gt; ColeUpdateProposalError -&gt; ShowS)
+-&gt; (ColeUpdateProposalError -&gt; String)
+-&gt; ([ColeUpdateProposalError] -&gt; ShowS)
+-&gt; Show ColeUpdateProposalError
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [ColeUpdateProposalError] -&gt; ShowS
+$cshowList :: [ColeUpdateProposalError] -&gt; ShowS
+show :: ColeUpdateProposalError -&gt; String
+$cshow :: ColeUpdateProposalError -&gt; String
+showsPrec :: Int -&gt; ColeUpdateProposalError -&gt; ShowS
+$cshowsPrec :: Int -&gt; ColeUpdateProposalError -&gt; ShowS
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#renderColeUpdateProposalError"><span class="hs-identifier hs-type">renderColeUpdateProposalError</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalError"><span class="hs-identifier hs-type">ColeUpdateProposalError</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/src"><span class="hs-identifier hs-type">Text</span></a></span><span>
+</span><span id="line-44"></span><span id="renderColeUpdateProposalError"><span class="annot"><span class="annottext">renderColeUpdateProposalError :: ColeUpdateProposalError -&gt; Text
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#renderColeUpdateProposalError"><span class="hs-identifier hs-var hs-var">renderColeUpdateProposalError</span></a></span></span><span> </span><span id="local-6989586621679348113"><span class="annot"><span class="annottext">ColeUpdateProposalError
+</span><a href="#local-6989586621679348113"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ColeUpdateProposalError
+</span><a href="#local-6989586621679348113"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeReadUpdateProposalFileFailure"><span class="hs-identifier hs-type">ColeReadUpdateProposalFileFailure</span></a></span><span> </span><span id="local-6989586621679348112"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348112"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span id="local-6989586621679348111"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679348111"><span class="hs-identifier hs-var">rErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-47"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Error reading update proposal at &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348112"><span class="hs-identifier hs-var">fp</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot; Error: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679348111"><span class="hs-identifier hs-var">rErr</span></a></span><span>
+</span><span id="line-48"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalWriteError"><span class="hs-identifier hs-type">ColeUpdateProposalWriteError</span></a></span><span> </span><span id="local-6989586621679348110"><span class="annot"><span class="annottext">HelpersError
+</span><a href="#local-6989586621679348110"><span class="hs-identifier hs-var">hErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-49"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Error writing update proposal: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">HelpersError -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#renderHelpersError"><span class="hs-identifier hs-var">renderHelpersError</span></a></span><span> </span><span class="annot"><span class="annottext">HelpersError
+</span><a href="#local-6989586621679348110"><span class="hs-identifier hs-var">hErr</span></a></span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalGenesisReadError"><span class="hs-identifier hs-type">ColeUpdateProposalGenesisReadError</span></a></span><span> </span><span id="local-6989586621679348109"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348109"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span id="local-6989586621679348108"><span class="annot"><span class="annottext">ColeGenesisError
+</span><a href="#local-6989586621679348108"><span class="hs-identifier hs-var">rErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-51"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Error reading update proposal at: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348109"><span class="hs-identifier hs-var">fp</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot; Error: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">ColeGenesisError -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">ColeGenesisError
+</span><a href="#local-6989586621679348108"><span class="hs-identifier hs-var">rErr</span></a></span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalTxError"><span class="hs-identifier hs-type">ColeUpdateProposalTxError</span></a></span><span> </span><span id="local-6989586621679348107"><span class="annot"><span class="annottext">ColeTxError
+</span><a href="#local-6989586621679348107"><span class="hs-identifier hs-var">txErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-53"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Error submitting update proposal: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">ColeTxError -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">ColeTxError
+</span><a href="#local-6989586621679348107"><span class="hs-identifier hs-var">txErr</span></a></span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ReadSigningKeyFailure"><span class="hs-identifier hs-type">ReadSigningKeyFailure</span></a></span><span> </span><span id="local-6989586621679348106"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348106"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span id="local-6989586621679348105"><span class="annot"><span class="annottext">ColeKeyFailure
+</span><a href="#local-6989586621679348105"><span class="hs-identifier hs-var">rErr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-55"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Error reading signing key at: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348106"><span class="hs-identifier hs-var">fp</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot; Error: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">ColeKeyFailure -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">ColeKeyFailure
+</span><a href="#local-6989586621679348105"><span class="hs-identifier hs-var">rErr</span></a></span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#UpdateProposalDecodingError"><span class="hs-identifier hs-type">UpdateProposalDecodingError</span></a></span><span> </span><span id="local-6989586621679348104"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348104"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-57"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Error decoding update proposal at: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">&lt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+forall a. Show a =&gt; a -&gt; Text
+</span><a href="Bcc.CLI.Helpers.html#textShow"><span class="hs-identifier hs-var">textShow</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348104"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#runProposalCreation"><span class="hs-identifier hs-type">runProposalCreation</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">NetworkId</span></a></span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Bcc.CLI.Types.html#SigningKeyFile"><span class="hs-identifier hs-type">SigningKeyFile</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ProtocolVersion</span></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SoftwareVersion</span></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SystemTag</span></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">InstallerHash</span></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">ColeProtocolParametersUpdate</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier hs-type">ExceptT</span></a></span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalError"><span class="hs-identifier hs-type">ColeUpdateProposalError</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">IO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span id="runProposalCreation"><span class="annot"><span class="annottext">runProposalCreation :: NetworkId
+-&gt; SigningKeyFile
+-&gt; ProtocolVersion
+-&gt; SoftwareVersion
+-&gt; SystemTag
+-&gt; InstallerHash
+-&gt; String
+-&gt; ColeProtocolParametersUpdate
+-&gt; ExceptT ColeUpdateProposalError IO ()
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#runProposalCreation"><span class="hs-identifier hs-var hs-var">runProposalCreation</span></a></span></span><span> </span><span id="local-6989586621679348103"><span class="annot"><span class="annottext">NetworkId
+</span><a href="#local-6989586621679348103"><span class="hs-identifier hs-var">nw</span></a></span></span><span> </span><span id="local-6989586621679348102"><span class="annot"><span class="annottext">sKey :: SigningKeyFile
+</span><a href="#local-6989586621679348102"><span class="hs-identifier hs-var">sKey</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Bcc.CLI.Types.html#SigningKeyFile"><span class="hs-identifier hs-type">SigningKeyFile</span></a></span><span> </span><span id="local-6989586621679348100"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348100"><span class="hs-identifier hs-var">sKeyfp</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679348099"><span class="annot"><span class="annottext">ProtocolVersion
+</span><a href="#local-6989586621679348099"><span class="hs-identifier hs-var">pVer</span></a></span></span><span> </span><span id="local-6989586621679348098"><span class="annot"><span class="annottext">SoftwareVersion
+</span><a href="#local-6989586621679348098"><span class="hs-identifier hs-var">sVer</span></a></span></span><span>
+</span><span id="line-70"></span><span>                    </span><span id="local-6989586621679348097"><span class="annot"><span class="annottext">SystemTag
+</span><a href="#local-6989586621679348097"><span class="hs-identifier hs-var">sysTag</span></a></span></span><span> </span><span id="local-6989586621679348096"><span class="annot"><span class="annottext">InstallerHash
+</span><a href="#local-6989586621679348096"><span class="hs-identifier hs-var">insHash</span></a></span></span><span> </span><span id="local-6989586621679348095"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348095"><span class="hs-identifier hs-var">outputFp</span></a></span></span><span> </span><span id="local-6989586621679348094"><span class="annot"><span class="annottext">ColeProtocolParametersUpdate
+</span><a href="#local-6989586621679348094"><span class="hs-identifier hs-var">params</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-71"></span><span>  </span><span id="local-6989586621679348093"><span class="annot"><span class="annottext">SomeColeSigningKey
+</span><a href="#local-6989586621679348093"><span class="hs-identifier hs-var">sK</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(ColeKeyFailure -&gt; ColeUpdateProposalError)
+-&gt; ExceptT ColeKeyFailure IO SomeColeSigningKey
+-&gt; ExceptT ColeUpdateProposalError IO SomeColeSigningKey
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; ColeKeyFailure -&gt; ColeUpdateProposalError
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#ReadSigningKeyFailure"><span class="hs-identifier hs-var">ReadSigningKeyFailure</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348100"><span class="hs-identifier hs-var">sKeyfp</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(ExceptT ColeKeyFailure IO SomeColeSigningKey
+ -&gt; ExceptT ColeUpdateProposalError IO SomeColeSigningKey)
+-&gt; ExceptT ColeKeyFailure IO SomeColeSigningKey
+-&gt; ExceptT ColeUpdateProposalError IO SomeColeSigningKey
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">ColeKeyFormat
+-&gt; SigningKeyFile -&gt; ExceptT ColeKeyFailure IO SomeColeSigningKey
+</span><a href="Bcc.CLI.Cole.Key.html#readColeSigningKey"><span class="hs-identifier hs-var">readColeSigningKey</span></a></span><span> </span><span class="annot"><span class="annottext">ColeKeyFormat
+</span><a href="Bcc.CLI.Sophie.Commands.html#NonLegacyColeKeyFormat"><span class="hs-identifier hs-var">NonLegacyColeKeyFormat</span></a></span><span> </span><span class="annot"><span class="annottext">SigningKeyFile
+</span><a href="#local-6989586621679348102"><span class="hs-identifier hs-var">sKey</span></a></span><span>
+</span><span id="line-72"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679348091"><span class="annot"><span class="annottext">proposal :: ColeUpdateProposal
+</span><a href="#local-6989586621679348091"><span class="hs-identifier hs-var hs-var">proposal</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NetworkId
+-&gt; ProtocolVersion
+-&gt; SoftwareVersion
+-&gt; SystemTag
+-&gt; InstallerHash
+-&gt; SomeColeSigningKey
+-&gt; ColeProtocolParametersUpdate
+-&gt; ColeUpdateProposal
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">makeColeUpdateProposal</span></a></span><span> </span><span class="annot"><span class="annottext">NetworkId
+</span><a href="#local-6989586621679348103"><span class="hs-identifier hs-var">nw</span></a></span><span> </span><span class="annot"><span class="annottext">ProtocolVersion
+</span><a href="#local-6989586621679348099"><span class="hs-identifier hs-var">pVer</span></a></span><span> </span><span class="annot"><span class="annottext">SoftwareVersion
+</span><a href="#local-6989586621679348098"><span class="hs-identifier hs-var">sVer</span></a></span><span> </span><span class="annot"><span class="annottext">SystemTag
+</span><a href="#local-6989586621679348097"><span class="hs-identifier hs-var">sysTag</span></a></span><span> </span><span class="annot"><span class="annottext">InstallerHash
+</span><a href="#local-6989586621679348096"><span class="hs-identifier hs-var">insHash</span></a></span><span> </span><span class="annot"><span class="annottext">SomeColeSigningKey
+</span><a href="#local-6989586621679348093"><span class="hs-identifier hs-var">sK</span></a></span><span> </span><span class="annot"><span class="annottext">ColeProtocolParametersUpdate
+</span><a href="#local-6989586621679348094"><span class="hs-identifier hs-var">params</span></a></span><span>
+</span><span id="line-73"></span><span>  </span><span class="annot"><span class="annottext">(HelpersError -&gt; ColeUpdateProposalError)
+-&gt; ExceptT HelpersError IO ()
+-&gt; ExceptT ColeUpdateProposalError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">HelpersError -&gt; ColeUpdateProposalError
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalWriteError"><span class="hs-identifier hs-var">ColeUpdateProposalWriteError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT HelpersError IO ()
+ -&gt; ExceptT ColeUpdateProposalError IO ())
+-&gt; ExceptT HelpersError IO ()
+-&gt; ExceptT ColeUpdateProposalError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-74"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; ByteString -&gt; ExceptT HelpersError IO ()
+</span><a href="Bcc.CLI.Helpers.html#ensureNewFileLBS"><span class="hs-identifier hs-var">ensureNewFileLBS</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348095"><span class="hs-identifier hs-var">outputFp</span></a></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; ExceptT HelpersError IO ())
+-&gt; ByteString -&gt; ExceptT HelpersError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">ColeUpdateProposal -&gt; ByteString
+forall a. SerialiseAsRawBytes a =&gt; a -&gt; ByteString
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">serialiseToRawBytes</span></a></span><span> </span><span class="annot"><span class="annottext">ColeUpdateProposal
+</span><a href="#local-6989586621679348091"><span class="hs-identifier hs-var">proposal</span></a></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#readColeUpdateProposal"><span class="hs-identifier hs-type">readColeUpdateProposal</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier hs-type">ExceptT</span></a></span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalError"><span class="hs-identifier hs-type">ColeUpdateProposalError</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">IO</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">ColeUpdateProposal</span></a></span><span>
+</span><span id="line-77"></span><span id="readColeUpdateProposal"><span class="annot"><span class="annottext">readColeUpdateProposal :: String -&gt; ExceptT ColeUpdateProposalError IO ColeUpdateProposal
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#readColeUpdateProposal"><span class="hs-identifier hs-var hs-var">readColeUpdateProposal</span></a></span></span><span> </span><span id="local-6989586621679348089"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348089"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-78"></span><span>  </span><span id="local-6989586621679348088"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679348088"><span class="hs-identifier hs-var">proposalBs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(IOException -&gt; ColeUpdateProposalError)
+-&gt; IO ByteString -&gt; ExceptT ColeUpdateProposalError IO ByteString
+forall (m :: * -&gt; *) x a.
+MonadIO m =&gt;
+(IOException -&gt; x) -&gt; IO a -&gt; ExceptT x m a
+</span><span class="hs-identifier hs-var">handleIOExceptT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text -&gt; ColeUpdateProposalError
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeReadUpdateProposalFileFailure"><span class="hs-identifier hs-var">ColeReadUpdateProposalFileFailure</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348089"><span class="hs-identifier hs-var">fp</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; ColeUpdateProposalError)
+-&gt; (IOException -&gt; Text) -&gt; IOException -&gt; ColeUpdateProposalError
+forall k (cat :: k -&gt; k -&gt; *) (b :: k) (c :: k) (a :: k).
+Category cat =&gt;
+cat b c -&gt; cat a b -&gt; cat a c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+forall a b. ConvertText a b =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">toS</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; (IOException -&gt; String) -&gt; IOException -&gt; Text
+forall k (cat :: k -&gt; k -&gt; *) (b :: k) (c :: k) (a :: k).
+Category cat =&gt;
+cat b c -&gt; cat a b -&gt; cat a c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">IOException -&gt; String
+forall e. Exception e =&gt; e -&gt; String
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">displayException</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span>                  </span><span class="annot"><span class="annottext">(IO ByteString -&gt; ExceptT ColeUpdateProposalError IO ByteString)
+-&gt; IO ByteString -&gt; ExceptT ColeUpdateProposalError IO ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ByteString
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/bytestring-0.10.12.0/src"><span class="hs-identifier hs-var">BS.readFile</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348089"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679348083"><span class="annot"><span class="annottext">mProposal :: Maybe ColeUpdateProposal
+</span><a href="#local-6989586621679348083"><span class="hs-identifier hs-var hs-var">mProposal</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AsType ColeUpdateProposal -&gt; ByteString -&gt; Maybe ColeUpdateProposal
+forall a.
+SerialiseAsRawBytes a =&gt;
+AsType a -&gt; ByteString -&gt; Maybe a
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">deserialiseFromRawBytes</span></a></span><span> </span><span class="annot"><span class="annottext">AsType ColeUpdateProposal
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">AsColeUpdateProposal</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679348088"><span class="hs-identifier hs-var">proposalBs</span></a></span><span>
+</span><span id="line-81"></span><span>  </span><span class="annot"><span class="annottext">Either ColeUpdateProposalError ColeUpdateProposal
+-&gt; ExceptT ColeUpdateProposalError IO ColeUpdateProposal
+forall (m :: * -&gt; *) x a. Monad m =&gt; Either x a -&gt; ExceptT x m a
+</span><span class="hs-identifier hs-var">hoistEither</span></span><span> </span><span class="annot"><span class="annottext">(Either ColeUpdateProposalError ColeUpdateProposal
+ -&gt; ExceptT ColeUpdateProposalError IO ColeUpdateProposal)
+-&gt; Either ColeUpdateProposalError ColeUpdateProposal
+-&gt; ExceptT ColeUpdateProposalError IO ColeUpdateProposal
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Either ColeUpdateProposalError ColeUpdateProposal
+-&gt; (ColeUpdateProposal
+    -&gt; Either ColeUpdateProposalError ColeUpdateProposal)
+-&gt; Maybe ColeUpdateProposal
+-&gt; Either ColeUpdateProposalError ColeUpdateProposal
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">maybe</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColeUpdateProposalError
+-&gt; Either ColeUpdateProposalError ColeUpdateProposal
+forall a b. a -&gt; Either a b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="annot"><span class="annottext">(ColeUpdateProposalError
+ -&gt; Either ColeUpdateProposalError ColeUpdateProposal)
+-&gt; ColeUpdateProposalError
+-&gt; Either ColeUpdateProposalError ColeUpdateProposal
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ColeUpdateProposalError
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#UpdateProposalDecodingError"><span class="hs-identifier hs-var">UpdateProposalDecodingError</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348089"><span class="hs-identifier hs-var">fp</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ColeUpdateProposal
+-&gt; Either ColeUpdateProposalError ColeUpdateProposal
+forall a b. b -&gt; Either a b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe ColeUpdateProposal
+</span><a href="#local-6989586621679348083"><span class="hs-identifier hs-var">mProposal</span></a></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#submitColeUpdateProposal"><span class="hs-identifier hs-type">submitColeUpdateProposal</span></a></span><span>
+</span><span id="line-84"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-type">NetworkId</span></a></span><span>
+</span><span id="line-85"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier hs-type">FilePath</span></a></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/transformers-0.5.6.2/src"><span class="hs-identifier hs-type">ExceptT</span></a></span><span> </span><span class="annot"><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalError"><span class="hs-identifier hs-type">ColeUpdateProposalError</span></a></span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">IO</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-87"></span><span id="submitColeUpdateProposal"><span class="annot"><span class="annottext">submitColeUpdateProposal :: NetworkId -&gt; String -&gt; ExceptT ColeUpdateProposalError IO ()
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#submitColeUpdateProposal"><span class="hs-identifier hs-var hs-var">submitColeUpdateProposal</span></a></span></span><span> </span><span id="local-6989586621679348080"><span class="annot"><span class="annottext">NetworkId
+</span><a href="#local-6989586621679348080"><span class="hs-identifier hs-var">network</span></a></span></span><span> </span><span id="local-6989586621679348079"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348079"><span class="hs-identifier hs-var">proposalFp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-88"></span><span>    </span><span id="local-6989586621679348078"><span class="annot"><span class="annottext">ColeUpdateProposal
+</span><a href="#local-6989586621679348078"><span class="hs-identifier hs-var">proposal</span></a></span></span><span>  </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; ExceptT ColeUpdateProposalError IO ColeUpdateProposal
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#readColeUpdateProposal"><span class="hs-identifier hs-var">readColeUpdateProposal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679348079"><span class="hs-identifier hs-var">proposalFp</span></a></span><span>
+</span><span id="line-89"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679348077"><span class="annot"><span class="annottext">genTx :: GenTx ColeBlock
+</span><a href="#local-6989586621679348077"><span class="hs-identifier hs-var hs-var">genTx</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ColeUpdateProposal -&gt; GenTx ColeBlock
+</span><a href="../file:///home/rmourey26/bccio/bcc-node/dist-newstyle/build/x86_64-linux/ghc-8.10.4/bcc-api-1.99.0/noopt/doc/html/bcc-api/src"><span class="hs-identifier hs-var">toColeLedgerUpdateProposal</span></a></span><span> </span><span class="annot"><span class="annottext">ColeUpdateProposal
+</span><a href="#local-6989586621679348078"><span class="hs-identifier hs-var">proposal</span></a></span><span>
+</span><span id="line-90"></span><span>    </span><span class="annot"><span class="annottext">Tracer (ExceptT ColeUpdateProposalError IO) String
+-&gt; String -&gt; ExceptT ColeUpdateProposalError IO ()
+forall (m :: * -&gt; *) a. Tracer m a -&gt; a -&gt; m ()
+</span><span class="hs-identifier hs-var">traceWith</span></span><span> </span><span class="annot"><span class="annottext">Tracer (ExceptT ColeUpdateProposalError IO) String
+forall (m :: * -&gt; *). MonadIO m =&gt; Tracer m String
+</span><span class="hs-identifier hs-var">stdoutTracer</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; ExceptT ColeUpdateProposalError IO ())
+-&gt; String -&gt; ExceptT ColeUpdateProposalError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span>
+</span><span id="line-91"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Update proposal TxId: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">++</span></a></span><span> </span><span class="annot"><span class="annottext">TxId (GenTx ColeBlock) -&gt; String
+forall a. Condense a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">condense</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GenTx ColeBlock -&gt; TxId (GenTx ColeBlock)
+forall tx. HasTxId tx =&gt; tx -&gt; TxId tx
+</span><span class="hs-identifier hs-var">txId</span></span><span> </span><span class="annot"><span class="annottext">GenTx ColeBlock
+</span><a href="#local-6989586621679348077"><span class="hs-identifier hs-var">genTx</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>    </span><span class="annot"><span class="annottext">(ColeTxError -&gt; ColeUpdateProposalError)
+-&gt; ExceptT ColeTxError IO ()
+-&gt; ExceptT ColeUpdateProposalError IO ()
+forall (m :: * -&gt; *) x y a.
+Functor m =&gt;
+(x -&gt; y) -&gt; ExceptT x m a -&gt; ExceptT y m a
+</span><span class="hs-identifier hs-var">firstExceptT</span></span><span> </span><span class="annot"><span class="annottext">ColeTxError -&gt; ColeUpdateProposalError
+</span><a href="Bcc.CLI.Cole.UpdateProposal.html#ColeUpdateProposalTxError"><span class="hs-identifier hs-var">ColeUpdateProposalTxError</span></a></span><span> </span><span class="annot"><span class="annottext">(ExceptT ColeTxError IO ()
+ -&gt; ExceptT ColeUpdateProposalError IO ())
+-&gt; ExceptT ColeTxError IO ()
+-&gt; ExceptT ColeUpdateProposalError IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">NetworkId -&gt; GenTx ColeBlock -&gt; ExceptT ColeTxError IO ()
+</span><a href="Bcc.CLI.Cole.Tx.html#nodeSubmitTx"><span class="hs-identifier hs-var">nodeSubmitTx</span></a></span><span> </span><span class="annot"><span class="annottext">NetworkId
+</span><a href="#local-6989586621679348080"><span class="hs-identifier hs-var">network</span></a></span><span> </span><span class="annot"><span class="annottext">GenTx ColeBlock
+</span><a href="#local-6989586621679348077"><span class="hs-identifier hs-var">genTx</span></a></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span></pre></body></html>

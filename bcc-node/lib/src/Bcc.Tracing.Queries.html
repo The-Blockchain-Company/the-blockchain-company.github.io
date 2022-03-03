@@ -1,0 +1,266 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DataKinds #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE LambdaCase #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Bcc.Tracing.Queries</span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier">LedgerQueries</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-identifier">Prelude</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier">Int</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator">(.)</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/containers-0.6.2.1/src"><span class="hs-identifier">Data.Map.Strict</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.HardFork.Combinator</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.HardFork.Combinator.Embed.Unary</span></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Bcc.Chain.Block</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Cole</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Bcc.Chain.UTxO</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Cole</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Cole.Ledger.Block</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Cole</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Cole.Ledger.Ledger</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Cole</span></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Sophie.Ledger</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Sophie</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Sophie.Spec.Ledger.LedgerState</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Sophie</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Sophie.Spec.Ledger.UTxO</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Sophie</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Bcc</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Bcc</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Shardagnostic.Consensus.Bcc.Block</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Bcc</span></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">class</span><span> </span><span id="LedgerQueries"><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier hs-var">LedgerQueries</span></a></span></span><span> </span><span id="local-6989586621679417901"><span class="annot"><a href="#local-6989586621679417901"><span class="hs-identifier hs-type">blk</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-30"></span><span>  </span><span id="ledgerUtxoSize"><span class="annot"><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-type">ledgerUtxoSize</span></a></span></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LedgerState</span></span><span> </span><span class="annot"><a href="#local-6989586621679417901"><span class="hs-identifier hs-type">blk</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">Int</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span id="ledgerDelegMapSize"><span class="annot"><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-type">ledgerDelegMapSize</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LedgerState</span></span><span> </span><span class="annot"><a href="#local-6989586621679417901"><span class="hs-identifier hs-type">blk</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/ghc-prim-0.6.1/src"><span class="hs-identifier hs-type">Int</span></a></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier hs-type">LedgerQueries</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Cole.ColeBlock</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-34"></span><span>  </span><span id="local-6989586621679417848"><span class="annot"><span class="annottext">ledgerUtxoSize :: LedgerState ColeBlock -&gt; Int
+</span><a href="#local-6989586621679417848"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerUtxoSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Map CompactTxIn CompactTxOut -&gt; Int
+forall k a. Map k a -&gt; Int
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/containers-0.6.2.1/src"><span class="hs-identifier hs-var">Map.size</span></a></span><span> </span><span class="annot"><span class="annottext">(Map CompactTxIn CompactTxOut -&gt; Int)
+-&gt; (LedgerState ColeBlock -&gt; Map CompactTxIn CompactTxOut)
+-&gt; LedgerState ColeBlock
+-&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">UTxO -&gt; Map CompactTxIn CompactTxOut
+</span><span class="hs-identifier hs-var hs-var">Cole.unUTxO</span></span><span> </span><span class="annot"><span class="annottext">(UTxO -&gt; Map CompactTxIn CompactTxOut)
+-&gt; (LedgerState ColeBlock -&gt; UTxO)
+-&gt; LedgerState ColeBlock
+-&gt; Map CompactTxIn CompactTxOut
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">ChainValidationState -&gt; UTxO
+</span><span class="hs-identifier hs-var hs-var">Cole.cvsUtxo</span></span><span> </span><span class="annot"><span class="annottext">(ChainValidationState -&gt; UTxO)
+-&gt; (LedgerState ColeBlock -&gt; ChainValidationState)
+-&gt; LedgerState ColeBlock
+-&gt; UTxO
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState ColeBlock -&gt; ChainValidationState
+</span><span class="hs-identifier hs-var hs-var">Cole.coleLedgerState</span></span><span>
+</span><span id="line-35"></span><span>  </span><span id="local-6989586621679417843"><span class="annot"><span class="annottext">ledgerDelegMapSize :: LedgerState ColeBlock -&gt; Int
+</span><a href="#local-6989586621679417843"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerDelegMapSize</span></a></span></span><span> </span><span class="annot"><span class="annottext">LedgerState ColeBlock
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span id="local-6989586621679417842"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier hs-type">LedgerQueries</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Sophie.SophieBlock</span></span><span> </span><span class="annot"><a href="#local-6989586621679417842"><span class="hs-identifier hs-type">era</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>  </span><span id="local-6989586621679417839"><span class="annot"><span class="annottext">ledgerUtxoSize :: LedgerState (SophieBlock era) -&gt; Int
+</span><a href="#local-6989586621679417839"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerUtxoSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-39"></span><span>      </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Sophie.UTxO</span></span><span> </span><span id="local-6989586621679417837"><span class="annot"><span class="annottext">Map (TxIn (Crypto era)) (TxOut era)
+</span><a href="#local-6989586621679417837"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Map (TxIn (Crypto era)) (TxOut era) -&gt; Int
+forall k a. Map k a -&gt; Int
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/containers-0.6.2.1/src"><span class="hs-identifier hs-var">Map.size</span></a></span><span> </span><span class="annot"><span class="annottext">Map (TxIn (Crypto era)) (TxOut era)
+</span><a href="#local-6989586621679417837"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>    </span><span class="annot"><span class="annottext">(UTxO era -&gt; Int)
+-&gt; (LedgerState (SophieBlock era) -&gt; UTxO era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">UTxOState era -&gt; UTxO era
+forall era. UTxOState era -&gt; UTxO era
+</span><span class="hs-identifier hs-var hs-var">Sophie._utxo</span></span><span>
+</span><span id="line-41"></span><span>    </span><span class="annot"><span class="annottext">(UTxOState era -&gt; UTxO era)
+-&gt; (LedgerState (SophieBlock era) -&gt; UTxOState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; UTxO era
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState era -&gt; UTxOState era
+forall era. LedgerState era -&gt; UTxOState era
+</span><span class="hs-identifier hs-var hs-var">Sophie._utxoState</span></span><span>
+</span><span id="line-42"></span><span>    </span><span class="annot"><span class="annottext">(LedgerState era -&gt; UTxOState era)
+-&gt; (LedgerState (SophieBlock era) -&gt; LedgerState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; UTxOState era
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">EpochState era -&gt; LedgerState era
+forall era. EpochState era -&gt; LedgerState era
+</span><span class="hs-identifier hs-var hs-var">Sophie.esLState</span></span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><span class="annottext">(EpochState era -&gt; LedgerState era)
+-&gt; (LedgerState (SophieBlock era) -&gt; EpochState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; LedgerState era
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">NewEpochState era -&gt; EpochState era
+forall era. NewEpochState era -&gt; EpochState era
+</span><span class="hs-identifier hs-var hs-var">Sophie.nesEs</span></span><span>
+</span><span id="line-44"></span><span>    </span><span class="annot"><span class="annottext">(NewEpochState era -&gt; EpochState era)
+-&gt; (LedgerState (SophieBlock era) -&gt; NewEpochState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; EpochState era
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock era) -&gt; NewEpochState era
+forall era. LedgerState (SophieBlock era) -&gt; NewEpochState era
+</span><span class="hs-identifier hs-var hs-var">Sophie.sophieLedgerState</span></span><span>
+</span><span id="line-45"></span><span>  </span><span id="local-6989586621679417831"><span class="annot"><span class="annottext">ledgerDelegMapSize :: LedgerState (SophieBlock era) -&gt; Int
+</span><a href="#local-6989586621679417831"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerDelegMapSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-46"></span><span>      </span><span class="annot"><span class="annottext">Map
+  (Credential 'Staking (Crypto era))
+  (KeyHash 'StakePool (Crypto era))
+-&gt; Int
+forall k a. Map k a -&gt; Int
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/containers-0.6.2.1/src"><span class="hs-identifier hs-var">Map.size</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span class="annot"><span class="annottext">(Map
+   (Credential 'Staking (Crypto era))
+   (KeyHash 'StakePool (Crypto era))
+ -&gt; Int)
+-&gt; (LedgerState (SophieBlock era)
+    -&gt; Map
+         (Credential 'Staking (Crypto era))
+         (KeyHash 'StakePool (Crypto era)))
+-&gt; LedgerState (SophieBlock era)
+-&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">DState (Crypto era)
+-&gt; Map
+     (Credential 'Staking (Crypto era))
+     (KeyHash 'StakePool (Crypto era))
+forall crypto.
+DState crypto
+-&gt; Map (Credential 'Staking crypto) (KeyHash 'StakePool crypto)
+</span><span class="hs-identifier hs-var hs-var">Sophie._delegations</span></span><span>
+</span><span id="line-48"></span><span>    </span><span class="annot"><span class="annottext">(DState (Crypto era)
+ -&gt; Map
+      (Credential 'Staking (Crypto era))
+      (KeyHash 'StakePool (Crypto era)))
+-&gt; (LedgerState (SophieBlock era) -&gt; DState (Crypto era))
+-&gt; LedgerState (SophieBlock era)
+-&gt; Map
+     (Credential 'Staking (Crypto era))
+     (KeyHash 'StakePool (Crypto era))
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">DPState (Crypto era) -&gt; DState (Crypto era)
+forall crypto. DPState crypto -&gt; DState crypto
+</span><span class="hs-identifier hs-var hs-var">Sophie._dstate</span></span><span>
+</span><span id="line-49"></span><span>    </span><span class="annot"><span class="annottext">(DPState (Crypto era) -&gt; DState (Crypto era))
+-&gt; (LedgerState (SophieBlock era) -&gt; DPState (Crypto era))
+-&gt; LedgerState (SophieBlock era)
+-&gt; DState (Crypto era)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState era -&gt; DPState (Crypto era)
+forall era. LedgerState era -&gt; DPState (Crypto era)
+</span><span class="hs-identifier hs-var hs-var">Sophie._delegationState</span></span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><span class="annottext">(LedgerState era -&gt; DPState (Crypto era))
+-&gt; (LedgerState (SophieBlock era) -&gt; LedgerState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; DPState (Crypto era)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">EpochState era -&gt; LedgerState era
+forall era. EpochState era -&gt; LedgerState era
+</span><span class="hs-identifier hs-var hs-var">Sophie.esLState</span></span><span>
+</span><span id="line-51"></span><span>    </span><span class="annot"><span class="annottext">(EpochState era -&gt; LedgerState era)
+-&gt; (LedgerState (SophieBlock era) -&gt; EpochState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; LedgerState era
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">NewEpochState era -&gt; EpochState era
+forall era. NewEpochState era -&gt; EpochState era
+</span><span class="hs-identifier hs-var hs-var">Sophie.nesEs</span></span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><span class="annottext">(NewEpochState era -&gt; EpochState era)
+-&gt; (LedgerState (SophieBlock era) -&gt; NewEpochState era)
+-&gt; LedgerState (SophieBlock era)
+-&gt; EpochState era
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock era) -&gt; NewEpochState era
+forall era. LedgerState (SophieBlock era) -&gt; NewEpochState era
+</span><span class="hs-identifier hs-var hs-var">Sophie.sophieLedgerState</span></span></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span id="local-6989586621679417827"><span class="hs-keyword">instance</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier hs-type">LedgerQueries</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679417827"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NoHardForks</span></span><span> </span><span class="annot"><a href="#local-6989586621679417827"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>      </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier hs-type">LedgerQueries</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">HardForkBlock</span></span><span> </span><span class="hs-special">'</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679417827"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>  </span><span id="local-6989586621679417824"><span class="annot"><span class="annottext">ledgerUtxoSize :: LedgerState (HardForkBlock '[x]) -&gt; Int
+</span><a href="#local-6989586621679417824"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerUtxoSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LedgerState x -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-var">ledgerUtxoSize</span></a></span><span> </span><span class="annot"><span class="annottext">(LedgerState x -&gt; Int)
+-&gt; (LedgerState (HardForkBlock '[x]) -&gt; LedgerState x)
+-&gt; LedgerState (HardForkBlock '[x])
+-&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (HardForkBlock '[x]) -&gt; LedgerState x
+forall (f :: * -&gt; *) blk.
+(Isomorphic f, NoHardForks blk) =&gt;
+f (HardForkBlock '[blk]) -&gt; f blk
+</span><span class="hs-identifier hs-var">project</span></span><span>
+</span><span id="line-57"></span><span>  </span><span id="local-6989586621679417822"><span class="annot"><span class="annottext">ledgerDelegMapSize :: LedgerState (HardForkBlock '[x]) -&gt; Int
+</span><a href="#local-6989586621679417822"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerDelegMapSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LedgerState x -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-var">ledgerDelegMapSize</span></a></span><span> </span><span class="annot"><span class="annottext">(LedgerState x -&gt; Int)
+-&gt; (LedgerState (HardForkBlock '[x]) -&gt; LedgerState x)
+-&gt; LedgerState (HardForkBlock '[x])
+-&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><a href="../file:///home/rmourey26/.ghcup/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/src"><span class="hs-operator hs-var">.</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (HardForkBlock '[x]) -&gt; LedgerState x
+forall (f :: * -&gt; *) blk.
+(Isomorphic f, NoHardForks blk) =&gt;
+f (HardForkBlock '[blk]) -&gt; f blk
+</span><span class="hs-identifier hs-var">project</span></span></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span id="local-6989586621679417821"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Bcc.Tracing.Queries.html#LedgerQueries"><span class="hs-identifier hs-type">LedgerQueries</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Bcc.BccBlock</span></span><span> </span><span class="annot"><a href="#local-6989586621679417821"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-60"></span><span>  </span><span id="local-6989586621679417818"><span class="annot"><span class="annottext">ledgerUtxoSize :: LedgerState (BccBlock c) -&gt; Int
+</span><a href="#local-6989586621679417818"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerUtxoSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-61"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateCole</span></span><span>   </span><span id="local-6989586621679417816"><span class="annot"><span class="annottext">LedgerState ColeBlock
+</span><a href="#local-6989586621679417816"><span class="hs-identifier hs-var">ledgerCole</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState ColeBlock -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-var">ledgerUtxoSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState ColeBlock
+</span><a href="#local-6989586621679417816"><span class="hs-identifier hs-var">ledgerCole</span></a></span><span>
+</span><span id="line-62"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateSophie</span></span><span> </span><span id="local-6989586621679417814"><span class="annot"><span class="annottext">LedgerState (SophieBlock (SophieEra c))
+</span><a href="#local-6989586621679417814"><span class="hs-identifier hs-var">ledgerSophie</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (SophieEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-var">ledgerUtxoSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (SophieEra c))
+</span><a href="#local-6989586621679417814"><span class="hs-identifier hs-var">ledgerSophie</span></a></span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateEvie</span></span><span> </span><span id="local-6989586621679417812"><span class="annot"><span class="annottext">LedgerState (SophieBlock (EvieEra c))
+</span><a href="#local-6989586621679417812"><span class="hs-identifier hs-var">ledgerEvie</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (EvieEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-var">ledgerUtxoSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (EvieEra c))
+</span><a href="#local-6989586621679417812"><span class="hs-identifier hs-var">ledgerEvie</span></a></span><span>
+</span><span id="line-64"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateJen</span></span><span>    </span><span id="local-6989586621679417810"><span class="annot"><span class="annottext">LedgerState (SophieBlock (JenEra c))
+</span><a href="#local-6989586621679417810"><span class="hs-identifier hs-var">ledgerJen</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (JenEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-var">ledgerUtxoSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (JenEra c))
+</span><a href="#local-6989586621679417810"><span class="hs-identifier hs-var">ledgerJen</span></a></span><span>
+</span><span id="line-65"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateAurum</span></span><span>  </span><span id="local-6989586621679417808"><span class="annot"><span class="annottext">LedgerState (SophieBlock (AurumEra c))
+</span><a href="#local-6989586621679417808"><span class="hs-identifier hs-var">ledgerAurum</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (AurumEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerUtxoSize"><span class="hs-identifier hs-var">ledgerUtxoSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (AurumEra c))
+</span><a href="#local-6989586621679417808"><span class="hs-identifier hs-var">ledgerAurum</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span id="local-6989586621679417807"><span class="annot"><span class="annottext">ledgerDelegMapSize :: LedgerState (BccBlock c) -&gt; Int
+</span><a href="#local-6989586621679417807"><span class="hs-identifier hs-var hs-var hs-var hs-var">ledgerDelegMapSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-67"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateCole</span></span><span>   </span><span id="local-6989586621679417806"><span class="annot"><span class="annottext">LedgerState ColeBlock
+</span><a href="#local-6989586621679417806"><span class="hs-identifier hs-var">ledgerCole</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState ColeBlock -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-var">ledgerDelegMapSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState ColeBlock
+</span><a href="#local-6989586621679417806"><span class="hs-identifier hs-var">ledgerCole</span></a></span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateSophie</span></span><span> </span><span id="local-6989586621679417805"><span class="annot"><span class="annottext">LedgerState (SophieBlock (SophieEra c))
+</span><a href="#local-6989586621679417805"><span class="hs-identifier hs-var">ledgerSophie</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (SophieEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-var">ledgerDelegMapSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (SophieEra c))
+</span><a href="#local-6989586621679417805"><span class="hs-identifier hs-var">ledgerSophie</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateEvie</span></span><span> </span><span id="local-6989586621679417804"><span class="annot"><span class="annottext">LedgerState (SophieBlock (EvieEra c))
+</span><a href="#local-6989586621679417804"><span class="hs-identifier hs-var">ledgerEvie</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (EvieEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-var">ledgerDelegMapSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (EvieEra c))
+</span><a href="#local-6989586621679417804"><span class="hs-identifier hs-var">ledgerEvie</span></a></span><span>
+</span><span id="line-70"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateJen</span></span><span>    </span><span id="local-6989586621679417803"><span class="annot"><span class="annottext">LedgerState (SophieBlock (JenEra c))
+</span><a href="#local-6989586621679417803"><span class="hs-identifier hs-var">ledgerJen</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (JenEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-var">ledgerDelegMapSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (JenEra c))
+</span><a href="#local-6989586621679417803"><span class="hs-identifier hs-var">ledgerJen</span></a></span><span>
+</span><span id="line-71"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Bcc.LedgerStateAurum</span></span><span>  </span><span id="local-6989586621679417802"><span class="annot"><span class="annottext">LedgerState (SophieBlock (AurumEra c))
+</span><a href="#local-6989586621679417802"><span class="hs-identifier hs-var">ledgerAurum</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (AurumEra c)) -&gt; Int
+forall blk. LedgerQueries blk =&gt; LedgerState blk -&gt; Int
+</span><a href="Bcc.Tracing.Queries.html#ledgerDelegMapSize"><span class="hs-identifier hs-var">ledgerDelegMapSize</span></a></span><span> </span><span class="annot"><span class="annottext">LedgerState (SophieBlock (AurumEra c))
+</span><a href="#local-6989586621679417802"><span class="hs-identifier hs-var">ledgerAurum</span></a></span></span><span>
+</span><span id="line-72"></span></pre></body></html>
