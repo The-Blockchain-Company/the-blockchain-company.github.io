@@ -100,7 +100,7 @@ body.js-enabled .hide-when-js-enabled {
   }
 
   #synopsis .show {
-    border: 1px solid #5E5184;
+    border: 1px solid #00ffc8;
     padding: 0.7em;
     max-height: 65vh;
   }
@@ -290,7 +290,7 @@ pre, code, kbd, samp, tt, .src {
 
 .caption, h1, h2, h3, h4, h5, h6, summary {
   font-weight: bold;
-  color: #5E5184;
+  color: #1e2022;
   margin: 1.5em 0 1em 0;
 }
 
@@ -353,7 +353,7 @@ ul.links li a {
 
 .collapser:before, .expander:before, .noexpander:before {
   font-size: 1.2em;
-  color: #9C5791;
+  color: #444444;
   display: inline-block;
   padding-right: 7px;
 }
@@ -403,7 +403,7 @@ pre + pre {
 }
 
 blockquote {
-  border-left: 3px solid #c7a5d3;
+  border-left: 3px solid #8accc1;
   background-color: #eee4f1;
   margin: 0.5em;
   padding: 0.0005em 0.3em 0.5em 0.5em;
@@ -431,8 +431,8 @@ blockquote {
 }
 
 #package-header {
-  background: #5E5184;
-  border-bottom: 5px solid rgba(69, 59, 97, 0.5);
+  background: #00ffc6;
+  border-bottom: 5px solid #3b606180;
   color: #ddd;
   position: relative;
   font-size: 1.2em;
