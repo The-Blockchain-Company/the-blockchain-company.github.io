@@ -100,7 +100,7 @@ body.js-enabled .hide-when-js-enabled {
   }
 
   #synopsis .show {
-    border: 1px solid #5E5184;
+    border: 1px solid #009c97;
     padding: 0.7em;
     max-height: 65vh;
   }
@@ -290,7 +290,7 @@ pre, code, kbd, samp, tt, .src {
 
 .caption, h1, h2, h3, h4, h5, h6, summary {
   font-weight: bold;
-  color: #5E5184;
+  color: #009c97;
   margin: 1.5em 0 1em 0;
 }
 
@@ -431,7 +431,7 @@ blockquote {
 }
 
 #package-header {
-  background: #5E5184;
+  background: #009c97;
   border-bottom: 5px solid rgba(69, 59, 97, 0.5);
   color: #ddd;
   position: relative;
